@@ -8,4 +8,10 @@
     <string name="default_launcher_unavailable">Default-launcher setting is not available on this Android version.</string>
     <string name="loading_apps">Loading apps…</string>
     <string name="installed_apps">Installed apps (%1$d)</string>
+    <string name="search_apps">Search apps</string>
+    <string name="no_apps_found">No apps match your search</string>
+    <string name="app_info">App info</string>
+    <string name="uninstall">Uninstall</string>
+    <string name="launch_failed">Couldn\'t open that app</string>
+    <string name="swipe_up_hint">Swipe up for all apps</string>
 </resources>

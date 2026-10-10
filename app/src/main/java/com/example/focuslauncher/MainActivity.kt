@@ -2,16 +2,19 @@ package com.example.focuslauncher
 
 import android.app.role.RoleManager
 import android.content.Intent
+import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
-import android.graphics.drawable.Drawable
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,15 +29,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.focuslauncher.domain.model.AppInfo
-import com.example.focuslauncher.ui.drawer.AppsDebugSection
 import com.example.focuslauncher.ui.drawer.AppsUiState
 import com.example.focuslauncher.ui.drawer.AppsViewModel
+import com.example.focuslauncher.ui.drawer.DrawerScreen
 import com.example.focuslauncher.ui.theme.FocusLauncherTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -55,7 +62,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
                 ) {
-                    // On home: back press does nothing (drawer will use it later).
+                    // On home: back press does nothing (drawer handles its own back).
                     BackHandler(enabled = true) { /* stay on home */ }
                     val appsState by appsViewModel.uiState.collectAsState()
                     HomeScreen(
@@ -63,10 +70,18 @@ class MainActivity : ComponentActivity() {
                         isDefaultLauncher = isDefaultLauncher(),
                         onRequestDefault = ::requestHomeRole,
                         appsState = appsState,
+                        onQueryChange = appsViewModel::onQueryChange,
+                        onLaunchApp = ::launchApp,
                         loadIcon = appsViewModel::loadIcon,
                     )
                 }
             }
+        }
+    }
+
+    private fun launchApp(app: AppInfo) {
+        if (!appsViewModel.launch(app)) {
+            Toast.makeText(this, R.string.launch_failed, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -110,22 +125,67 @@ fun HomeScreen(
     isDefaultLauncher: Boolean,
     onRequestDefault: () -> Unit,
     appsState: AppsUiState,
+    onQueryChange: (String) -> Unit,
+    onLaunchApp: (AppInfo) -> Unit,
     loadIcon: suspend (AppInfo) -> Drawable?,
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        BlankHome(
-            isRoleAvailable = isRoleAvailable,
-            isDefaultLauncher = isDefaultLauncher,
-            onRequestDefault = onRequestDefault,
-        )
-        HorizontalDivider()
-        AppsDebugSection(
-            state = appsState,
-            loadIcon = loadIcon,
-            modifier = Modifier.weight(1f),
-        )
+    var drawerOpen by remember { mutableStateOf(false) }
+    BackHandler(enabled = drawerOpen) { drawerOpen = false }
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .onSwipeUp { drawerOpen = true },
+        ) {
+            BlankHome(
+                isRoleAvailable = isRoleAvailable,
+                isDefaultLauncher = isDefaultLauncher,
+                onRequestDefault = onRequestDefault,
+            )
+            HorizontalDivider()
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = stringResource(R.string.swipe_up_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(bottom = 32.dp),
+            )
+        }
+        if (drawerOpen) {
+            DrawerScreen(
+                state = appsState,
+                onQueryChange = onQueryChange,
+                onLaunch = onLaunchApp,
+                loadIcon = loadIcon,
+                modifier = Modifier.onSwipeDown { drawerOpen = false },
+            )
+        }
     }
 }
+
+private fun Modifier.onSwipeUp(onSwipe: () -> Unit): Modifier = pointerInput(Unit) {
+    var total = 0f
+    detectVerticalDragGestures(
+        onDragStart = { total = 0f },
+        onDragCancel = { total = 0f },
+        onDragEnd = { if (total < -SWIPE_PX) onSwipe() },
+        onVerticalDrag = { _, dragAmount -> total += dragAmount },
+    )
+}
+
+private fun Modifier.onSwipeDown(onSwipe: () -> Unit): Modifier = pointerInput(Unit) {
+    var total = 0f
+    detectVerticalDragGestures(
+        onDragStart = { total = 0f },
+        onDragCancel = { total = 0f },
+        onDragEnd = { if (total > SWIPE_PX) onSwipe() },
+        onVerticalDrag = { _, dragAmount -> total += dragAmount },
+    )
+}
+
+private const val SWIPE_PX = 120f
 
 @Composable
 fun BlankHome(
