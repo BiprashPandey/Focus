@@ -6,4 +6,6 @@
     <string name="is_default_launcher">FocusLauncher is your default home app.</string>
     <string name="not_default_launcher">Not your default home app yet.</string>
     <string name="default_launcher_unavailable">Default-launcher setting is not available on this Android version.</string>
+    <string name="loading_apps">Loading apps…</string>
+    <string name="installed_apps">Installed apps (%1$d)</string>
 </resources>
