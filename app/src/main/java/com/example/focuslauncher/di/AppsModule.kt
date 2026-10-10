@@ -2,6 +2,8 @@ package com.example.focuslauncher.di
 
 import android.content.Context
 import android.content.pm.LauncherApps
+import com.example.focuslauncher.data.appconfig.AppConfigRepository
+import com.example.focuslauncher.data.appconfig.RoomAppConfigRepository
 import com.example.focuslauncher.data.apps.AppsRepository
 import com.example.focuslauncher.data.apps.LauncherAppsRepository
 import dagger.Binds
@@ -17,6 +19,9 @@ abstract class AppsModule {
 
     @Binds
     abstract fun bindAppsRepository(impl: LauncherAppsRepository): AppsRepository
+
+    @Binds
+    abstract fun bindAppConfigRepository(impl: RoomAppConfigRepository): AppConfigRepository
 
     companion object {
         @Provides
