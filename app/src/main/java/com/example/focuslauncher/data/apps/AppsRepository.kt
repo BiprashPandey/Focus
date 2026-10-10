@@ -27,6 +27,9 @@ interface AppsRepository {
 
     /** Lazily loads and caches the icon; safe to call from any thread. */
     suspend fun loadIcon(app: AppInfo): Drawable?
+
+    /** Launches the app; false if the component is gone or the launch was blocked. */
+    fun launch(app: AppInfo): Boolean
 }
 
 /**
@@ -92,6 +95,18 @@ class LauncherAppsRepository @Inject constructor(
     override suspend fun loadIcon(app: AppInfo): Drawable? = withContext(Dispatchers.IO) {
         iconCache.get(app.key)
             ?: infoByKey[app.key]?.getIcon(0)?.also { iconCache.put(app.key, it) }
+    }
+
+    override fun launch(app: AppInfo): Boolean {
+        val info = infoByKey[app.key] ?: return false
+        return try {
+            launcherApps.startMainActivity(info.componentName, info.user, null, null)
+            true
+        } catch (_: SecurityException) {
+            false
+        } catch (_: IllegalArgumentException) {
+            false
+        }
     }
 
     companion object {

@@ -49,6 +49,20 @@ class AppListRulesTest {
     }
 
     @Test
+    fun filter_subsequenceMatchesLabel() {
+        val apps = listOf(app("File Manager"), app("Clock"))
+        val result = AppListRules.filter(apps, "flmn")
+        assertEquals(listOf("File Manager"), result.map { it.label })
+    }
+
+    @Test
+    fun filter_directHitsRankBeforeFuzzyOnes() {
+        val apps = listOf(app("File Manager"), app("FM Radio", "com.miui.fm"))
+        val result = AppListRules.filter(apps, "fm")
+        assertEquals(listOf("FM Radio", "File Manager"), result.map { it.label })
+    }
+
+    @Test
     fun appKey_isUniquePerComponentAndUser() {
         val a = app("Mail", "com.mail").copy(componentFlattened = "com.mail/.A", userKey = "0")
         val b = a.copy(userKey = "10")

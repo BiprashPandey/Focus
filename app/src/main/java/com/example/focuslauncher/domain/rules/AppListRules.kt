@@ -9,13 +9,35 @@ object AppListRules {
     fun sort(apps: List<AppInfo>): List<AppInfo> =
         apps.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.label })
 
-    /** Accent-insensitive, case-insensitive substring match on label or package. */
+    /**
+     * Accent-insensitive match on label or package. Direct substring hits rank
+     * first (alphabetical), then subsequence ("fuzzy") hits on the label.
+     */
     fun filter(apps: List<AppInfo>, query: String): List<AppInfo> {
         val q = normalize(query).trim()
         if (q.isEmpty()) return apps
-        return apps.filter {
-            normalize(it.label).contains(q) || it.packageName.lowercase().contains(q)
+        val direct = ArrayList<AppInfo>()
+        val fuzzy = ArrayList<AppInfo>()
+        for (app in apps) {
+            val label = normalize(app.label)
+            if (label.contains(q) || app.packageName.lowercase().contains(q)) {
+                direct.add(app)
+            } else if (isSubsequence(label, q)) {
+                fuzzy.add(app)
+            }
         }
+        return sort(direct) + sort(fuzzy)
+    }
+
+    private fun isSubsequence(text: String, query: String): Boolean {
+        var qi = 0
+        for (c in text) {
+            if (c == query[qi]) {
+                qi++
+                if (qi == query.length) return true
+            }
+        }
+        return false
     }
 
     private fun normalize(s: String): String =
