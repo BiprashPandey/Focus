@@ -42,6 +42,9 @@ import com.example.focuslauncher.domain.model.AppInfo
 import com.example.focuslauncher.ui.drawer.AppsUiState
 import com.example.focuslauncher.ui.drawer.AppsViewModel
 import com.example.focuslauncher.ui.drawer.DrawerScreen
+import com.example.focuslauncher.ui.home.DockSection
+import com.example.focuslauncher.ui.home.HomeUiState
+import com.example.focuslauncher.ui.home.HomeViewModel
 import com.example.focuslauncher.ui.theme.FocusLauncherTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -49,6 +52,7 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val appsViewModel: AppsViewModel by viewModels()
+    private val homeViewModel: HomeViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,13 +69,16 @@ class MainActivity : ComponentActivity() {
                     // On home: back press does nothing (drawer handles its own back).
                     BackHandler(enabled = true) { /* stay on home */ }
                     val appsState by appsViewModel.uiState.collectAsState()
+                    val homeState by homeViewModel.uiState.collectAsState()
                     HomeScreen(
                         isRoleAvailable = isHomeRoleAvailable(),
                         isDefaultLauncher = isDefaultLauncher(),
                         onRequestDefault = ::requestHomeRole,
                         appsState = appsState,
+                        homeState = homeState,
                         onQueryChange = appsViewModel::onQueryChange,
                         onLaunchApp = ::launchApp,
+                        onDockPick = homeViewModel::setDockSlot,
                         loadIcon = appsViewModel::loadIcon,
                     )
                 }
@@ -125,8 +132,10 @@ fun HomeScreen(
     isDefaultLauncher: Boolean,
     onRequestDefault: () -> Unit,
     appsState: AppsUiState,
+    homeState: HomeUiState,
     onQueryChange: (String) -> Unit,
     onLaunchApp: (AppInfo) -> Unit,
+    onDockPick: (Int, AppInfo?) -> Unit,
     loadIcon: suspend (AppInfo) -> Drawable?,
 ) {
     var drawerOpen by remember { mutableStateOf(false) }
@@ -148,9 +157,14 @@ fun HomeScreen(
                 text = stringResource(R.string.swipe_up_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(bottom = 32.dp),
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
+            DockSection(
+                dock = homeState.dock,
+                allApps = homeState.allApps,
+                onLaunch = onLaunchApp,
+                onPick = onDockPick,
+                loadIcon = loadIcon,
             )
         }
         if (drawerOpen) {

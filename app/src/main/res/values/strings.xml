@@ -14,4 +14,7 @@
     <string name="uninstall">Uninstall</string>
     <string name="launch_failed">Couldn\'t open that app</string>
     <string name="swipe_up_hint">Swipe up for all apps</string>
+    <string name="dock_slot">App slot %1$d</string>
+    <string name="choose_app">Choose app</string>
+    <string name="remove_from_dock">Remove from dock</string>
 </resources>
