@@ -98,9 +98,13 @@ fun DockSection(
 
     val target = pickerFor
     if (target != null) {
+        val takenKeys = dock
+            .filterIndexed { index, _ -> index != target }
+            .mapNotNull { it?.key }
+            .toSet()
         DockPickerDialog(
             current = dock.getOrNull(target),
-            apps = allApps,
+            apps = allApps.filterNot { it.key in takenKeys },
             loadIcon = loadIcon,
             onPick = { app ->
                 onPick(target, app)
