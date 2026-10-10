@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -57,24 +58,22 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
     }
 
-    private fun roleManagerOrNull(): RoleManager? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
-        return getSystemService(RoleManager::class.java)
-    }
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun roleManager(): RoleManager = getSystemService(RoleManager::class.java)
 
     private fun isHomeRoleAvailable(): Boolean {
-        val rm = roleManagerOrNull() ?: return false
-        return rm.isRoleAvailable(RoleManager.ROLE_HOME)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
+        return roleManager().isRoleAvailable(RoleManager.ROLE_HOME)
     }
 
     private fun isDefaultLauncher(): Boolean {
-        val rm = roleManagerOrNull() ?: return false
-        return rm.isRoleHeld(RoleManager.ROLE_HOME)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
+        return roleManager().isRoleHeld(RoleManager.ROLE_HOME)
     }
 
     private fun requestHomeRole() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
-        val rm = roleManagerOrNull() ?: return
+        val rm = roleManager()
         if (!rm.isRoleAvailable(RoleManager.ROLE_HOME) || rm.isRoleHeld(RoleManager.ROLE_HOME)) return
         homeRoleLauncher.launch(rm.createRequestRoleIntent(RoleManager.ROLE_HOME))
     }
