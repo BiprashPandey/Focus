@@ -2,4 +2,8 @@
 <resources>
     <string name="app_name">FocusLauncher</string>
     <string name="hello_blank">FocusLauncher is set up. Your home screen comes next.</string>
+    <string name="set_as_default">Set as default launcher</string>
+    <string name="is_default_launcher">FocusLauncher is your default home app.</string>
+    <string name="not_default_launcher">Not your default home app yet.</string>
+    <string name="default_launcher_unavailable">Default-launcher setting is not available on this Android version.</string>
 </resources>
