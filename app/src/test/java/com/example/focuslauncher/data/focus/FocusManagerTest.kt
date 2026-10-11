@@ -35,6 +35,8 @@ private class FakeProfileDao : FocusProfileDao {
 
     override suspend fun get(id: Long): FocusProfile? = rows.firstOrNull { it.id == id }
 
+    override suspend fun count(): Int = rows.size
+
     override suspend fun insert(profile: FocusProfile): Long {
         val id = nextId++
         rows.add(profile.copy(id = id))
@@ -43,6 +45,21 @@ private class FakeProfileDao : FocusProfileDao {
 
     override suspend fun delete(id: Long) {
         rows.removeAll { it.id == id }
+    }
+
+    override suspend fun updateAllowed(id: Long, json: String) {
+        val i = rows.indexOfFirst { it.id == id }
+        if (i >= 0) rows[i] = rows[i].copy(allowedAppsJson = json)
+    }
+
+    override suspend fun updateDnd(id: Long, enabled: Boolean) {
+        val i = rows.indexOfFirst { it.id == id }
+        if (i >= 0) rows[i] = rows[i].copy(dndEnabled = enabled)
+    }
+
+    override suspend fun updateSchedule(id: Long, json: String?) {
+        val i = rows.indexOfFirst { it.id == id }
+        if (i >= 0) rows[i] = rows[i].copy(scheduleJson = json)
     }
 }
 

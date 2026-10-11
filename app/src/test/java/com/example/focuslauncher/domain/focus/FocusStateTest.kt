@@ -37,4 +37,11 @@ class FocusStateTest {
     fun presets_are25_50_90() {
         assertEquals(listOf(25, 50, 90), FocusDurations.presets)
     }
+
+    @Test
+    fun countdown_formatsMmSs() {
+        val active = FocusState.Active(1, 2, 0L, (24 * 60 + 59) * 1000L)
+        assertEquals("24:59", active.countdown(0L))
+        assertEquals("00:00", active.countdown(25 * 60_000L))
+    }
 }

@@ -100,6 +100,14 @@ fun DrawerScreen(
                     .fillMaxWidth()
                     .padding(16.dp),
             )
+            if (state.inFocus) {
+                Text(
+                    text = stringResource(R.string.focus_active_banner),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                )
+            }
             if (state.apps.isEmpty() && !state.isLoading) {
                 Text(
                     text = stringResource(R.string.no_apps_found),

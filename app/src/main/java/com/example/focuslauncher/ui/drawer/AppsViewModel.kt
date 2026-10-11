@@ -6,6 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.focuslauncher.data.appconfig.AppConfigRepository
 import com.example.focuslauncher.data.appconfig.ProtectedApps
 import com.example.focuslauncher.data.apps.AppsRepository
+import com.example.focuslauncher.data.focus.FocusManager
+import com.example.focuslauncher.data.focus.FocusProfile
+import com.example.focuslauncher.domain.focus.FocusFilter
+import com.example.focuslauncher.domain.focus.FocusState
 import com.example.focuslauncher.domain.model.AppInfo
 import com.example.focuslauncher.domain.model.AppLevel
 import com.example.focuslauncher.domain.rules.AppListRules
@@ -27,6 +31,7 @@ class AppsViewModel @Inject constructor(
     private val repository: AppsRepository,
     private val appConfigRepository: AppConfigRepository,
     private val protectedApps: ProtectedApps,
+    private val focusManager: FocusManager,
     private val usageRepository: com.example.focuslauncher.data.usage.UsageRepository,
 ) : ViewModel() {
 
@@ -63,6 +68,8 @@ class AppsViewModel @Inject constructor(
             protectedPackages,
             usageMinutes,
             hasUsagePermission,
+            focusManager.state,
+            focusManager.allProfiles,
             _query,
         ) { flows ->
             val apps = flows[0] as List<AppInfo>
@@ -73,7 +80,28 @@ class AppsViewModel @Inject constructor(
             @Suppress("UNCHECKED_CAST")
             val usage = flows[3] as Map<String, Int>
             val hasPermission = flows[4] as Boolean
-            val query = flows[5] as String
+            val focusState = flows[5] as FocusState
+            @Suppress("UNCHECKED_CAST")
+            val profiles = flows[6] as List<FocusProfile>
+            val query = flows[7] as String
+            // During focus only allowed + protected apps survive; the rest are
+            // blocked (launching routes to the pause screen).
+            val active = focusState as? FocusState.Active
+            val allowed = active?.let { a ->
+                profiles.firstOrNull { it.id == a.profileId }
+                    ?.let { FocusFilter.parseAllowed(it.allowedAppsJson) }
+            }
+            val inFocus = active != null
+            val candidates = if (allowed != null) {
+                FocusFilter.visible(apps, allowed, protected)
+            } else {
+                apps
+            }
+            val blocked = if (allowed != null) {
+                FocusFilter.blockedPackages(apps, allowed, protected)
+            } else {
+                emptySet()
+            }
             val levels: Map<String, AppLevel> = buildMap {
                 for (app in apps) {
                     val cfg = configs[app.packageName]
@@ -88,7 +116,7 @@ class AppsViewModel @Inject constructor(
                     )
                 }
             }
-            val grouped = AppVisibility.group(apps, levels, protected)
+            val grouped = AppVisibility.group(candidates, levels, protected)
             val main = AppListRules.filter(grouped.visible + grouped.gated, query)
             val hiddenMatch = AppListRules.filterHiddenFullNameOnly(grouped.hidden, query)
             val tucked = AppListRules.filter(grouped.tucked, query)
@@ -96,6 +124,8 @@ class AppsViewModel @Inject constructor(
                 apps = main + hiddenMatch,
                 tucked = tucked,
                 gatedPackages = grouped.gated.map { it.packageName }.toSet(),
+                blockedPackages = blocked,
+                inFocus = inFocus,
                 protectedPackages = protected,
                 usageMinutes = usage,
                 hasUsagePermission = hasPermission,

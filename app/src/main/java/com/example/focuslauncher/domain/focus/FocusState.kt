@@ -30,3 +30,9 @@ fun FocusState.Active.remaining(now: Long): Long = (endsAt - now).coerceAtLeast(
 
 /** True when the session end time has passed. */
 fun FocusState.Active.isExpired(now: Long): Boolean = now >= endsAt
+
+/** "24:59" style countdown for the timer card. */
+fun FocusState.Active.countdown(now: Long): String {
+    val totalSec = (remaining(now) / 1000).toInt()
+    return "%02d:%02d".format(totalSec / 60, totalSec % 60)
+}
