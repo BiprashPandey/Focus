@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.focuslauncher.R
 import com.example.focuslauncher.domain.model.AppInfo
+import com.example.focuslauncher.domain.model.AppLevel
 import com.example.focuslauncher.ui.theme.FocusLauncherTheme
 import kotlinx.coroutines.launch
 
@@ -61,6 +62,7 @@ fun DrawerScreen(
     onLaunch: (AppInfo) -> Unit,
     loadIcon: suspend (AppInfo) -> Drawable?,
     modifier: Modifier = Modifier,
+    onSetLevel: (AppInfo, AppLevel) -> Unit = { _, _ -> },
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -115,7 +117,20 @@ fun DrawerScreen(
                             is DrawerItem.Header -> SectionHeader(letter = item.letter)
                             is DrawerItem.Row -> DrawerRow(
                                 app = item.app,
+                                isProtected = item.app.packageName in state.protectedPackages,
                                 onLaunch = onLaunch,
+                                onSetLevel = onSetLevel,
+                                loadIcon = loadIcon,
+                            )
+                        }
+                    }
+                    if (state.tucked.isNotEmpty()) {
+                        item(key = "tucked-folder") {
+                            TuckedFolder(
+                                tucked = state.tucked,
+                                protectedPackages = state.protectedPackages,
+                                onLaunch = onLaunch,
+                                onSetLevel = onSetLevel,
                                 loadIcon = loadIcon,
                             )
                         }
@@ -157,7 +172,9 @@ private fun SectionHeader(letter: Char) {
 @Composable
 private fun DrawerRow(
     app: AppInfo,
+    isProtected: Boolean,
     onLaunch: (AppInfo) -> Unit,
+    onSetLevel: (AppInfo, AppLevel) -> Unit,
     loadIcon: suspend (AppInfo) -> Drawable?,
 ) {
     val context = LocalContext.current
@@ -203,6 +220,35 @@ private fun DrawerRow(
                     context.startActivity(uninstallIntent(app))
                 },
             )
+            if (isProtected) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.protected_app)) },
+                    enabled = false,
+                    onClick = { menuOpen = false },
+                )
+            } else {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.hide_app)) },
+                    onClick = {
+                        menuOpen = false
+                        onSetLevel(app, AppLevel.TUCKED)
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.hide_app_full)) },
+                    onClick = {
+                        menuOpen = false
+                        onSetLevel(app, AppLevel.HIDDEN)
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.unhide_app)) },
+                    onClick = {
+                        menuOpen = false
+                        onSetLevel(app, AppLevel.VISIBLE)
+                    },
+                )
+            }
         }
     }
     HorizontalDivider()
@@ -256,6 +302,51 @@ private fun letterAt(y: Float, height: Int, letters: List<Char>): Char {
     val index = ((y / height.coerceAtLeast(1)) * letters.size).toInt()
         .coerceIn(0, letters.size - 1)
     return letters[index]
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun TuckedFolder(
+    tucked: List<AppInfo>,
+    protectedPackages: Set<String>,
+    onLaunch: (AppInfo) -> Unit,
+    onSetLevel: (AppInfo, AppLevel) -> Unit,
+    loadIcon: suspend (AppInfo) -> Drawable?,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        HorizontalDivider()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(onClick = { expanded = !expanded })
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.tucked_folder, tucked.size),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = if (expanded) "−" else "+",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        if (expanded) {
+            for (app in tucked) {
+                DrawerRow(
+                    app = app,
+                    isProtected = app.packageName in protectedPackages,
+                    onLaunch = onLaunch,
+                    onSetLevel = onSetLevel,
+                    loadIcon = loadIcon,
+                )
+            }
+        }
+    }
 }
 
 @Preview(showBackground = true)

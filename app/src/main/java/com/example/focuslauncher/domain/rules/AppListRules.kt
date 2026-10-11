@@ -29,6 +29,23 @@ object AppListRules {
         return sort(direct) + sort(fuzzy)
     }
 
+    /**
+     * HIDDEN apps are search-only: shown only when the query equals the full
+     * app label (accent- and case-insensitive). Partial matches stay hidden.
+     */
+    fun matchesFullName(label: String, query: String): Boolean {
+        val q = normalize(query).trim()
+        if (q.isEmpty()) return false
+        return normalize(label).trim() == q
+    }
+
+    /** Returns the subset of [hidden] whose label fully matches [query]. */
+    fun filterHiddenFullNameOnly(hidden: List<AppInfo>, query: String): List<AppInfo> {
+        val q = normalize(query).trim()
+        if (q.isEmpty()) return emptyList()
+        return hidden.filter { normalize(it.label).trim() == q }
+    }
+
     private fun isSubsequence(text: String, query: String): Boolean {
         var qi = 0
         for (c in text) {

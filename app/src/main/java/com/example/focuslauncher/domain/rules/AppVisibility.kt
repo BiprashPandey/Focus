@@ -14,6 +14,26 @@ data class GroupedApps(
 /** Pure-Kotlin level rules. Protected packages are always VISIBLE. */
 object AppVisibility {
 
+    /**
+     * Effective level after daily limits: when usage access is available and
+     * [todayMin] reaches [limitMin], a VISIBLE/TUCKED/HIDDEN app is promoted
+     * to PAUSE_GATED for the rest of the day. Protected packages and already
+     * gated apps are unchanged. Null limit or missing permission (null
+     * [todayMin]) leaves the level unchanged.
+     */
+    fun effectiveLevel(
+        configured: AppLevel,
+        todayMin: Int?,
+        limitMin: Int?,
+        isProtected: Boolean,
+    ): AppLevel {
+        if (isProtected) return AppLevel.VISIBLE
+        if (configured == AppLevel.PAUSE_GATED) return configured
+        if (limitMin == null || todayMin == null) return configured
+        return if (todayMin >= limitMin) AppLevel.PAUSE_GATED else configured
+    }
+
+
     fun group(
         apps: List<AppInfo>,
         levels: Map<String, AppLevel>,

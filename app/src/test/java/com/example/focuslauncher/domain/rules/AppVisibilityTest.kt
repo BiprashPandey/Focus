@@ -62,4 +62,31 @@ class AppVisibilityTest {
         assertEquals(emptyList<AppInfo>(), grouped.hidden)
         assertEquals(emptyList<AppInfo>(), grouped.gated)
     }
+
+    @Test
+    fun overLimitPromotesToGated() {
+        assertEquals(
+            AppLevel.PAUSE_GATED,
+            AppVisibility.effectiveLevel(AppLevel.VISIBLE, 45, 30, false),
+        )
+        assertEquals(
+            AppLevel.VISIBLE,
+            AppVisibility.effectiveLevel(AppLevel.VISIBLE, 10, 30, false),
+        )
+    }
+
+    @Test
+    fun overLimitLeavesProtectedAndGatedAlone() {
+        assertEquals(AppLevel.VISIBLE, AppVisibility.effectiveLevel(AppLevel.HIDDEN, 99, 30, true))
+        assertEquals(
+            AppLevel.PAUSE_GATED,
+            AppVisibility.effectiveLevel(AppLevel.PAUSE_GATED, 0, 30, false),
+        )
+    }
+
+    @Test
+    fun nullLimitOrUsageKeepsLevel() {
+        assertEquals(AppLevel.VISIBLE, AppVisibility.effectiveLevel(AppLevel.VISIBLE, null, 30, false))
+        assertEquals(AppLevel.TUCKED, AppVisibility.effectiveLevel(AppLevel.TUCKED, 99, null, false))
+    }
 }

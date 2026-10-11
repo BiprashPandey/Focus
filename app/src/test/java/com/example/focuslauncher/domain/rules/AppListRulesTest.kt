@@ -63,6 +63,24 @@ class AppListRulesTest {
     }
 
     @Test
+    fun hiddenFullName_requiresExactLabel() {
+        val hidden = listOf(app("Instagram"), app("Internet Browser"))
+        assertEquals(
+            listOf("Instagram"),
+            AppListRules.filterHiddenFullNameOnly(hidden, "instagram").map { it.label },
+        )
+        assertEquals(emptyList<AppInfo>(), AppListRules.filterHiddenFullNameOnly(hidden, "insta"))
+        assertEquals(emptyList<AppInfo>(), AppListRules.filterHiddenFullNameOnly(hidden, "   "))
+    }
+
+    @Test
+    fun hiddenFullName_isAccentInsensitive() {
+        val hidden = listOf(app("Café Reader"))
+        assertEquals(1, AppListRules.filterHiddenFullNameOnly(hidden, "cafe reader").size)
+        assertEquals(0, AppListRules.filterHiddenFullNameOnly(hidden, "cafe").size)
+    }
+
+    @Test
     fun appKey_isUniquePerComponentAndUser() {
         val a = app("Mail", "com.mail").copy(componentFlattened = "com.mail/.A", userKey = "0")
         val b = a.copy(userKey = "10")

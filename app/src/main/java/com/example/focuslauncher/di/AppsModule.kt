@@ -23,9 +23,22 @@ abstract class AppsModule {
     @Binds
     abstract fun bindAppConfigRepository(impl: RoomAppConfigRepository): AppConfigRepository
 
+    @Binds
+    abstract fun bindUsageRepository(
+        impl: com.example.focuslauncher.data.usage.SystemUsageRepository,
+    ): com.example.focuslauncher.data.usage.UsageRepository
+
     companion object {
         @Provides
         fun provideLauncherApps(@ApplicationContext context: Context): LauncherApps =
             context.getSystemService(LauncherApps::class.java)
+
+        @Provides
+        fun provideUsageStats(@ApplicationContext context: Context): android.app.usage.UsageStatsManager =
+            context.getSystemService(android.app.usage.UsageStatsManager::class.java)
+
+        @Provides
+        fun provideAppOps(@ApplicationContext context: Context): android.app.AppOpsManager =
+            context.getSystemService(android.app.AppOpsManager::class.java)
     }
 }

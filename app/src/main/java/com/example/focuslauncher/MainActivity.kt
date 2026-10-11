@@ -16,6 +16,7 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,9 +41,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.focuslauncher.domain.model.AppInfo
+import com.example.focuslauncher.domain.model.AppLevel
 import com.example.focuslauncher.ui.drawer.AppsUiState
 import com.example.focuslauncher.ui.drawer.AppsViewModel
 import com.example.focuslauncher.ui.drawer.DrawerScreen
+import com.example.focuslauncher.ui.manage.ManageAppsScreen
+import com.example.focuslauncher.ui.manage.ManageAppsViewModel
+import com.example.focuslauncher.ui.pause.PauseScreen
+import com.example.focuslauncher.ui.pause.rememberPauseLine
+import com.example.focuslauncher.ui.usage.UsagePermissionScreen
 import com.example.focuslauncher.ui.home.DockSection
 import com.example.focuslauncher.ui.home.HomeUiState
 import com.example.focuslauncher.ui.home.HomeViewModel
@@ -53,6 +61,7 @@ class MainActivity : ComponentActivity() {
 
     private val appsViewModel: AppsViewModel by viewModels()
     private val homeViewModel: HomeViewModel by viewModels()
+    private val manageViewModel: ManageAppsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,14 +79,22 @@ class MainActivity : ComponentActivity() {
                     BackHandler(enabled = true) { /* stay on home */ }
                     val appsState by appsViewModel.uiState.collectAsState()
                     val homeState by homeViewModel.uiState.collectAsState()
+                    val manageState by manageViewModel.uiState.collectAsState()
                     HomeScreen(
                         isRoleAvailable = isHomeRoleAvailable(),
                         isDefaultLauncher = isDefaultLauncher(),
                         onRequestDefault = ::requestHomeRole,
                         appsState = appsState,
                         homeState = homeState,
+                        manageState = manageState,
                         onQueryChange = appsViewModel::onQueryChange,
                         onLaunchApp = ::launchApp,
+                        onSetLevel = appsViewModel::setLevel,
+                        onManageQuery = manageViewModel::onQueryChange,
+                        onManageSetLevel = manageViewModel::setLevel,
+                        onManageSetLimit = manageViewModel::setDailyLimit,
+                        onOpenUsageSettings = ::openUsageSettings,
+                        onRefreshUsage = appsViewModel::refreshUsage,
                         onDockPick = homeViewModel::setDockSlot,
                         loadIcon = appsViewModel::loadIcon,
                     )
@@ -90,6 +107,19 @@ class MainActivity : ComponentActivity() {
         if (!appsViewModel.launch(app)) {
             Toast.makeText(this, R.string.launch_failed, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun openUsageSettings() {
+        try {
+            startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
+        } catch (_: Exception) {
+            Toast.makeText(this, R.string.launch_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        appsViewModel.refreshUsage()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -133,13 +163,32 @@ fun HomeScreen(
     onRequestDefault: () -> Unit,
     appsState: AppsUiState,
     homeState: HomeUiState,
+    manageState: com.example.focuslauncher.ui.manage.ManageAppsUiState,
     onQueryChange: (String) -> Unit,
     onLaunchApp: (AppInfo) -> Unit,
+    onSetLevel: (AppInfo, AppLevel) -> Unit,
+    onManageQuery: (String) -> Unit,
+    onManageSetLevel: (AppInfo, AppLevel) -> Unit,
+    onManageSetLimit: (AppInfo, Int?) -> Unit,
+    onOpenUsageSettings: () -> Unit,
+    onRefreshUsage: () -> Unit,
     onDockPick: (Int, AppInfo?) -> Unit,
     loadIcon: suspend (AppInfo) -> Drawable?,
 ) {
     var drawerOpen by remember { mutableStateOf(false) }
+    var manageOpen by remember { mutableStateOf(false) }
+    var usageOpen by remember { mutableStateOf(false) }
+    var pendingPause by remember { mutableStateOf<AppInfo?>(null) }
     BackHandler(enabled = drawerOpen) { drawerOpen = false }
+    BackHandler(enabled = manageOpen) { manageOpen = false }
+    BackHandler(enabled = usageOpen) { usageOpen = false }
+    fun handleLaunch(app: AppInfo) {
+        if (app.packageName in appsState.gatedPackages) {
+            pendingPause = app
+        } else {
+            onLaunchApp(app)
+        }
+    }
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -150,6 +199,11 @@ fun HomeScreen(
                 isRoleAvailable = isRoleAvailable,
                 isDefaultLauncher = isDefaultLauncher,
                 onRequestDefault = onRequestDefault,
+                onManageClick = { manageOpen = true },
+                onUsageClick = {
+                    onRefreshUsage()
+                    usageOpen = true
+                },
             )
             HorizontalDivider()
             Spacer(modifier = Modifier.weight(1f))
@@ -162,7 +216,7 @@ fun HomeScreen(
             DockSection(
                 dock = homeState.dock,
                 allApps = homeState.allApps,
-                onLaunch = onLaunchApp,
+                onLaunch = ::handleLaunch,
                 onPick = onDockPick,
                 loadIcon = loadIcon,
             )
@@ -171,9 +225,44 @@ fun HomeScreen(
             DrawerScreen(
                 state = appsState,
                 onQueryChange = onQueryChange,
-                onLaunch = onLaunchApp,
+                onLaunch = ::handleLaunch,
                 loadIcon = loadIcon,
+                onSetLevel = onSetLevel,
                 modifier = Modifier.onSwipeDown { drawerOpen = false },
+            )
+        }
+        if (manageOpen) {
+            ManageAppsScreen(
+                state = manageState,
+                onQueryChange = onManageQuery,
+                onSetLevel = onManageSetLevel,
+                onSetLimit = onManageSetLimit,
+                onClose = { manageOpen = false },
+                loadIcon = loadIcon,
+            )
+        }
+        if (usageOpen) {
+            UsagePermissionScreen(
+                hasPermission = appsState.hasUsagePermission,
+                onOpenSettings = onOpenUsageSettings,
+                onClose = { usageOpen = false },
+            )
+        }
+        val gated = pendingPause
+        if (gated != null) {
+            PauseScreen(
+                app = gated,
+                todayMinutes = appsState.usageMinutes[gated.packageName] ?: 0,
+                motivationalLine = rememberPauseLine(),
+                onOpenAnyway = {
+                    pendingPause = null
+                    onLaunchApp(it)
+                },
+                onDoSomethingElse = {
+                    pendingPause = null
+                    drawerOpen = false
+                },
+                onClose = { pendingPause = null },
             )
         }
     }
@@ -206,6 +295,8 @@ fun BlankHome(
     isRoleAvailable: Boolean,
     isDefaultLauncher: Boolean,
     onRequestDefault: () -> Unit,
+    onManageClick: () -> Unit = {},
+    onUsageClick: () -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -216,6 +307,18 @@ fun BlankHome(
     ) {
         Text(text = stringResource(R.string.hello_blank))
         Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            OutlinedButton(onClick = onManageClick) {
+                Text(text = stringResource(R.string.manage_apps))
+            }
+            OutlinedButton(onClick = onUsageClick) {
+                Text(text = stringResource(R.string.usage_limits))
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
         when {
             !isRoleAvailable -> Text(text = stringResource(R.string.default_launcher_unavailable))
             isDefaultLauncher -> Text(text = stringResource(R.string.is_default_launcher))
