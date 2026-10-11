@@ -21,6 +21,10 @@ default. Local-first and private.
   25/50/90/custom-minute sessions that survive app kill and reboot,
   session-end notification, emergency exit (long-press End + 10 s wait +
   optional reason), optional schedules and opt-in Do Not Disturb.
+- **Productive home** — to-dos (quick add, swipe-to-complete), notes
+  (quick capture, pinning), calendar card (next 3 events, opt-in),
+  daily intention + tone-matched quote (3/day cap, quiet hours),
+  reorderable/hideable cards with Minimal and Dashboard layouts.
 
 ## Stack
 
@@ -59,6 +63,7 @@ util/
 | `POST_NOTIFICATIONS` | Focus session-end reminder (Android 13+, optional) |
 | `ACCESS_NOTIFICATION_POLICY` | Do Not Disturb during focus (opt-in, optional) |
 | `RECEIVE_BOOT_COMPLETED` | Restore focus session / schedules after reboot |
+| `READ_CALENDAR` | Calendar card (asked only on "Connect calendar") |
 
 No analytics, no network calls, all data stays on-device.
 
@@ -68,6 +73,6 @@ No analytics, no network calls, all data stays on-device.
 - [x] Phase 1 — drawer, search, dock
 - [x] Phase 2 — hiding, pause screen, usage limits
 - [x] Phase 3 — focus sessions, allowed apps, schedules, DND
-- [ ] Phase 4 — to-dos, notes, calendar, intention, quotes
+- [x] Phase 4 — to-dos, notes, calendar, intention, quotes, home layouts
 - [ ] Phase 5 — Spark hobby suggestions (offline-first)
 - [ ] Phase 6 — polish, release

@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -42,8 +46,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.example.focuslauncher.data.settings.HomeCards
+import com.example.focuslauncher.data.settings.Layouts
 import com.example.focuslauncher.domain.model.AppInfo
 import com.example.focuslauncher.domain.model.AppLevel
+import com.example.focuslauncher.ui.calendar.CalendarCard
 import com.example.focuslauncher.ui.drawer.AppsUiState
 import com.example.focuslauncher.ui.drawer.AppsViewModel
 import com.example.focuslauncher.ui.drawer.DrawerScreen
@@ -52,13 +59,24 @@ import com.example.focuslauncher.ui.focus.FocusSettingsScreen
 import com.example.focuslauncher.ui.focus.FocusSettingsViewModel
 import com.example.focuslauncher.ui.focus.FocusViewModel
 import com.example.focuslauncher.ui.home.DockSection
+import com.example.focuslauncher.ui.home.HomeCustomizationScreen
 import com.example.focuslauncher.ui.home.HomeUiState
 import com.example.focuslauncher.ui.home.HomeViewModel
+import com.example.focuslauncher.ui.home.HomeSettingsViewModel
 import com.example.focuslauncher.ui.manage.ManageAppsScreen
 import com.example.focuslauncher.ui.manage.ManageAppsViewModel
+import com.example.focuslauncher.ui.motivation.MotivationCard
+import com.example.focuslauncher.ui.motivation.MotivationViewModel
+import com.example.focuslauncher.ui.notes.NotesCard
+import com.example.focuslauncher.ui.notes.NotesScreen
+import com.example.focuslauncher.ui.notes.NotesViewModel
 import com.example.focuslauncher.ui.pause.PauseScreen
 import com.example.focuslauncher.ui.pause.rememberPauseLine
 import com.example.focuslauncher.ui.theme.FocusLauncherTheme
+import com.example.focuslauncher.ui.todos.TodosCard
+import com.example.focuslauncher.ui.todos.TodosScreen
+import com.example.focuslauncher.ui.todos.TodosViewModel
+import com.example.focuslauncher.ui.calendar.CalendarViewModel
 import com.example.focuslauncher.ui.usage.UsagePermissionScreen
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -70,6 +88,11 @@ class MainActivity : ComponentActivity() {
     private val manageViewModel: ManageAppsViewModel by viewModels()
     private val focusViewModel: FocusViewModel by viewModels()
     private val focusSettingsViewModel: FocusSettingsViewModel by viewModels()
+    private val todosViewModel: TodosViewModel by viewModels()
+    private val notesViewModel: NotesViewModel by viewModels()
+    private val calendarViewModel: CalendarViewModel by viewModels()
+    private val motivationViewModel: MotivationViewModel by viewModels()
+    private val homeSettingsViewModel: HomeSettingsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,6 +113,11 @@ class MainActivity : ComponentActivity() {
                     val manageState by manageViewModel.uiState.collectAsState()
                     val focusState by focusViewModel.uiState.collectAsState()
                     val focusSettingsState by focusSettingsViewModel.uiState.collectAsState()
+                    val todosState by todosViewModel.uiState.collectAsState()
+                    val notesState by notesViewModel.uiState.collectAsState()
+                    val calendarState by calendarViewModel.uiState.collectAsState()
+                    val motivationState by motivationViewModel.uiState.collectAsState()
+                    val homeLayout by homeSettingsViewModel.layout.collectAsState()
                     HomeScreen(
                         isRoleAvailable = isHomeRoleAvailable(),
                         isDefaultLauncher = isDefaultLauncher(),
@@ -99,6 +127,11 @@ class MainActivity : ComponentActivity() {
                         manageState = manageState,
                         focusState = focusState,
                         focusSettingsState = focusSettingsState,
+                        todosState = todosState,
+                        notesState = notesState,
+                        calendarState = calendarState,
+                        motivationState = motivationState,
+                        homeLayout = homeLayout,
                         onQueryChange = appsViewModel::onQueryChange,
                         onLaunchApp = ::launchApp,
                         onSetLevel = appsViewModel::setLevel,
@@ -116,6 +149,20 @@ class MainActivity : ComponentActivity() {
                         onOpenDndSettings = ::openDndSettings,
                         onSaveFocusSchedule = focusSettingsViewModel::onSaveSchedule,
                         onClearFocusSchedule = focusSettingsViewModel::onClearSchedule,
+                        onTodoAdd = todosViewModel::add,
+                        onTodoToggle = todosViewModel::toggle,
+                        onTodoDelete = todosViewModel::delete,
+                        onTodosClearCompleted = todosViewModel::clearCompleted,
+                        onNoteQuickAdd = notesViewModel::quickAdd,
+                        onNoteTogglePin = notesViewModel::togglePin,
+                        onNoteDelete = notesViewModel::delete,
+                        onCalendarConnect = ::requestCalendarPermission,
+                        onIntentionSave = motivationViewModel::saveIntention,
+                        onIntentionToggle = motivationViewModel::toggleIntentionDone,
+                        onToneChange = motivationViewModel::setTone,
+                        onCardMove = homeSettingsViewModel::move,
+                        onCardHidden = homeSettingsViewModel::setHidden,
+                        onLayoutChange = homeSettingsViewModel::setLayout,
                         onDockPick = homeViewModel::setDockSlot,
                         loadIcon = appsViewModel::loadIcon,
                     )
@@ -146,6 +193,16 @@ class MainActivity : ComponentActivity() {
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {
             // Best-effort: the session runs with or without notifications.
+        }
+
+    private fun requestCalendarPermission() {
+        calendarPermissionLauncher.launch(android.Manifest.permission.READ_CALENDAR)
+    }
+
+    private val calendarPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+            // Granted or not, refresh so the card shows events or the empty state.
+            calendarViewModel.refresh()
         }
 
     private fun onFocusDndToggle(enabled: Boolean) {
@@ -242,6 +299,25 @@ fun HomeScreen(
     onOpenDndSettings: () -> Unit,
     onSaveFocusSchedule: (com.example.focuslauncher.domain.focus.FocusSchedule) -> Unit,
     onClearFocusSchedule: () -> Unit,
+    todosState: com.example.focuslauncher.ui.todos.TodosUiState,
+    notesState: com.example.focuslauncher.ui.notes.NotesUiState,
+    calendarState: com.example.focuslauncher.ui.calendar.CalendarUiState,
+    motivationState: com.example.focuslauncher.ui.motivation.MotivationUiState,
+    homeLayout: com.example.focuslauncher.data.settings.HomeLayout,
+    onTodoAdd: (String) -> Unit,
+    onTodoToggle: (com.example.focuslauncher.data.todos.Todo) -> Unit,
+    onTodoDelete: (Long) -> Unit,
+    onTodosClearCompleted: () -> Unit,
+    onNoteQuickAdd: (String) -> Unit,
+    onNoteTogglePin: (com.example.focuslauncher.data.notes.Note) -> Unit,
+    onNoteDelete: (Long) -> Unit,
+    onCalendarConnect: () -> Unit,
+    onIntentionSave: (String) -> Unit,
+    onIntentionToggle: () -> Unit,
+    onToneChange: (String) -> Unit,
+    onCardMove: (String, Boolean) -> Unit,
+    onCardHidden: (String, Boolean) -> Unit,
+    onLayoutChange: (String) -> Unit,
     onDockPick: (Int, AppInfo?) -> Unit,
     loadIcon: suspend (AppInfo) -> Drawable?,
 ) {
@@ -249,11 +325,17 @@ fun HomeScreen(
     var manageOpen by remember { mutableStateOf(false) }
     var usageOpen by remember { mutableStateOf(false) }
     var focusSettingsOpen by remember { mutableStateOf(false) }
+    var todosOpen by remember { mutableStateOf(false) }
+    var notesOpen by remember { mutableStateOf(false) }
+    var homeCustomOpen by remember { mutableStateOf(false) }
     var pendingPause by remember { mutableStateOf<AppInfo?>(null) }
     BackHandler(enabled = drawerOpen) { drawerOpen = false }
     BackHandler(enabled = manageOpen) { manageOpen = false }
     BackHandler(enabled = usageOpen) { usageOpen = false }
     BackHandler(enabled = focusSettingsOpen) { focusSettingsOpen = false }
+    BackHandler(enabled = todosOpen) { todosOpen = false }
+    BackHandler(enabled = notesOpen) { notesOpen = false }
+    BackHandler(enabled = homeCustomOpen) { homeCustomOpen = false }
     fun handleLaunch(app: AppInfo) {
         if (app.packageName in appsState.gatedPackages ||
             app.packageName in appsState.blockedPackages
@@ -263,36 +345,84 @@ fun HomeScreen(
             onLaunchApp(app)
         }
     }
+    val minimal = homeLayout.layout == Layouts.MINIMAL
+    val focusActive = focusState.active != null
+    val cards = if (minimal) {
+        // Minimal mode: calm text home. The running timer always stays visible.
+        if (focusActive) listOf(HomeCards.FOCUS) else emptyList()
+    } else {
+        homeLayout.visibleCards().let { visible ->
+            if (focusActive && HomeCards.FOCUS !in visible) visible + HomeCards.FOCUS else visible
+        }
+    }
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .onSwipeUp { drawerOpen = true },
-        ) {
-            BlankHome(
-                isRoleAvailable = isRoleAvailable,
-                isDefaultLauncher = isDefaultLauncher,
-                onRequestDefault = onRequestDefault,
-                onManageClick = { manageOpen = true },
-                onUsageClick = {
-                    onRefreshUsage()
-                    usageOpen = true
-                },
-                onFocusClick = { focusSettingsOpen = true },
-            )
-            HorizontalDivider()
-            FocusCard(
-                state = focusState,
-                onStart = onStartFocus,
-                onStop = onStopFocus,
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = stringResource(R.string.swipe_up_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-            )
+        Column(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .onSwipeUp { drawerOpen = true },
+            ) {
+                BlankHome(
+                    isRoleAvailable = isRoleAvailable,
+                    isDefaultLauncher = isDefaultLauncher,
+                    onRequestDefault = onRequestDefault,
+                    onManageClick = { manageOpen = true },
+                    onUsageClick = {
+                        onRefreshUsage()
+                        usageOpen = true
+                    },
+                    onFocusClick = { focusSettingsOpen = true },
+                    onHomeClick = { homeCustomOpen = true },
+                )
+                HorizontalDivider()
+                if (minimal && !focusActive) {
+                    MinimalIntention(
+                        intention = motivationState.intention,
+                        hasIntention = motivationState.hasIntention,
+                    )
+                }
+                for (card in cards) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    when (card) {
+                        HomeCards.MOTIVATION -> MotivationCard(
+                            state = motivationState,
+                            onSaveIntention = onIntentionSave,
+                            onToggleIntentionDone = onIntentionToggle,
+                            onToneChange = onToneChange,
+                        )
+                        HomeCards.TODOS -> TodosCard(
+                            state = todosState,
+                            onAdd = onTodoAdd,
+                            onToggle = onTodoToggle,
+                            onOpenList = { todosOpen = true },
+                        )
+                        HomeCards.FOCUS -> FocusCard(
+                            state = focusState,
+                            onStart = onStartFocus,
+                            onStop = onStopFocus,
+                        )
+                        HomeCards.NOTES -> NotesCard(
+                            state = notesState,
+                            onQuickAdd = onNoteQuickAdd,
+                            onOpenNotes = { notesOpen = true },
+                        )
+                        HomeCards.CALENDAR -> CalendarCard(
+                            state = calendarState,
+                            onConnect = onCalendarConnect,
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.swipe_up_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                        .clickable { drawerOpen = true }
+                        .padding(8.dp),
+                )
+            }
             DockSection(
                 dock = homeState.dock,
                 allApps = homeState.allApps,
@@ -342,6 +472,32 @@ fun HomeScreen(
                 loadIcon = loadIcon,
             )
         }
+        if (todosOpen) {
+            TodosScreen(
+                state = todosState,
+                onToggle = onTodoToggle,
+                onDelete = onTodoDelete,
+                onClearCompleted = onTodosClearCompleted,
+                onClose = { todosOpen = false },
+            )
+        }
+        if (notesOpen) {
+            NotesScreen(
+                state = notesState,
+                onTogglePin = onNoteTogglePin,
+                onDelete = onNoteDelete,
+                onClose = { notesOpen = false },
+            )
+        }
+        if (homeCustomOpen) {
+            HomeCustomizationScreen(
+                layout = homeLayout,
+                onMove = onCardMove,
+                onHidden = onCardHidden,
+                onLayout = onLayoutChange,
+                onClose = { homeCustomOpen = false },
+            )
+        }
         val gated = pendingPause
         if (gated != null) {
             PauseScreen(
@@ -385,6 +541,21 @@ private fun Modifier.onSwipeDown(onSwipe: () -> Unit): Modifier = pointerInput(U
 private const val SWIPE_PX = 120f
 
 @Composable
+fun MinimalIntention(
+    intention: String,
+    hasIntention: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    if (!hasIntention) return
+    Text(
+        text = intention,
+        style = MaterialTheme.typography.headlineSmall,
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp),
+    )
+}
+
+@Composable
 fun BlankHome(
     isRoleAvailable: Boolean,
     isDefaultLauncher: Boolean,
@@ -392,6 +563,7 @@ fun BlankHome(
     onManageClick: () -> Unit = {},
     onUsageClick: () -> Unit = {},
     onFocusClick: () -> Unit = {},
+    onHomeClick: () -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -405,6 +577,7 @@ fun BlankHome(
         Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
         ) {
             OutlinedButton(onClick = onManageClick) {
                 Text(text = stringResource(R.string.manage_apps))
@@ -414,6 +587,9 @@ fun BlankHome(
             }
             OutlinedButton(onClick = onFocusClick) {
                 Text(text = stringResource(R.string.focus_button))
+            }
+            OutlinedButton(onClick = onHomeClick) {
+                Text(text = stringResource(R.string.home_customize))
             }
         }
         Spacer(modifier = Modifier.height(8.dp))

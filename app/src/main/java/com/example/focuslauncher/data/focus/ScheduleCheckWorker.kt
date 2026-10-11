@@ -6,6 +6,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.example.focuslauncher.data.appconfig.FocusDatabase
 import com.example.focuslauncher.data.appconfig.MIGRATION_1_2
+import com.example.focuslauncher.data.appconfig.MIGRATION_2_3
 import com.example.focuslauncher.domain.focus.FocusDurations
 import com.example.focuslauncher.domain.focus.FocusSchedule
 import kotlinx.coroutines.flow.first
@@ -25,7 +26,7 @@ class ScheduleCheckWorker(context: Context, params: WorkerParameters) :
             applicationContext,
             FocusDatabase::class.java,
             "focus.db",
-        ).addMigrations(MIGRATION_1_2).build()
+        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
         try {
             if (db.focusSessionDao().openSession() != null) return Result.success()
             val now = LocalDateTime.now()
