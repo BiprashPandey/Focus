@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- SeedScheme intentionally uses the Material Color Utilities internals
+         vendored in the version-pinned Material library (the engine
+         themeGuide.md recommends; the same calls system dynamic color makes).
+         The per-site @SuppressLint annotations are kept as documentation. -->
+    <issue id="RestrictedApi" severity="error">
+        <ignore path="**/SeedScheme.kt" />
+    </issue>
+</lint>

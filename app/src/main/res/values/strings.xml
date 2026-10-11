@@ -108,4 +108,27 @@
     <string name="home_layout_minimal">Minimal</string>
     <string name="home_move_up">Move up</string>
     <string name="home_move_down">Move down</string>
+    <string name="theme_button">Theme</string>
+    <string name="theme_title">Theme</string>
+    <string name="theme_preview">Preview</string>
+    <string name="theme_mode">Mode</string>
+    <string name="theme_mode_system">System</string>
+    <string name="theme_mode_light">Light</string>
+    <string name="theme_mode_dark">Dark</string>
+    <string name="theme_mode_amoled">AMOLED</string>
+    <string name="theme_source">Colors from</string>
+    <string name="theme_source_wallpaper">Wallpaper</string>
+    <string name="theme_source_system">System</string>
+    <string name="theme_source_custom">Custom</string>
+    <string name="theme_source_note">Wallpaper colors come from the system on Android 12 and newer.</string>
+    <string name="theme_presets">Preset themes</string>
+    <string name="theme_custom_seed">Custom seed color</string>
+    <string name="theme_hex">Hex</string>
+    <string name="theme_apply">Apply</string>
+    <string name="theme_corners">Corner style</string>
+    <string name="theme_corner_sharp">Sharp-ish</string>
+    <string name="theme_corner_rounded">Rounded</string>
+    <string name="theme_corner_extra">Extra rounded</string>
+    <string name="theme_icon_size">Icon size (%1$d dp)</string>
+    <string name="theme_reset">Reset to defaults</string>
 </resources>

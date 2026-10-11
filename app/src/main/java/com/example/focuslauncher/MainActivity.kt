@@ -50,6 +50,7 @@ import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import com.example.focuslauncher.data.settings.HomeCards
 import com.example.focuslauncher.data.settings.Layouts
+import com.example.focuslauncher.data.theme.ColorSources
 import com.example.focuslauncher.domain.focus.countdown
 import com.example.focuslauncher.domain.model.AppInfo
 import com.example.focuslauncher.domain.model.AppLevel
@@ -77,6 +78,7 @@ import com.example.focuslauncher.ui.notes.NotesViewModel
 import com.example.focuslauncher.ui.pause.PauseScreen
 import com.example.focuslauncher.ui.pause.rememberPauseLine
 import com.example.focuslauncher.ui.theme.FocusLauncherTheme
+import com.example.focuslauncher.ui.theme.ThemeSettingsScreen
 import com.example.focuslauncher.ui.theme.ThemeViewModel
 import com.example.focuslauncher.ui.todos.TodosCard
 import com.example.focuslauncher.ui.todos.TodosScreen
@@ -139,6 +141,7 @@ class MainActivity : ComponentActivity() {
                         calendarState = calendarState,
                         motivationState = motivationState,
                         homeLayout = homeLayout,
+                        themeConfig = themeConfig,
                         iconSize = themeConfig.iconSizeDp.dp,
                         onQueryChange = appsViewModel::onQueryChange,
                         onLaunchApp = ::launchApp,
@@ -171,6 +174,13 @@ class MainActivity : ComponentActivity() {
                         onCardMove = homeSettingsViewModel::move,
                         onCardHidden = homeSettingsViewModel::setHidden,
                         onLayoutChange = homeSettingsViewModel::setLayout,
+                        onThemeMode = themeViewModel::setMode,
+                        onThemeSource = themeViewModel::setSource,
+                        onThemePreset = themeViewModel::applyPreset,
+                        onThemeSeedHex = ::applySeedHex,
+                        onThemeCorner = themeViewModel::setCorner,
+                        onThemeIconSize = themeViewModel::setIconSize,
+                        onThemeReset = themeViewModel::reset,
                         onDockPick = homeViewModel::setDockSlot,
                         loadIcon = appsViewModel::loadIcon,
                     )
@@ -219,6 +229,11 @@ class MainActivity : ComponentActivity() {
             return
         }
         focusSettingsViewModel.onDndToggle(enabled)
+    }
+
+    private fun applySeedHex(argb: Long) {
+        themeViewModel.setSeed(argb)
+        themeViewModel.setSource(ColorSources.CUSTOM)
     }
 
     private fun hasDndAccess(): Boolean =
@@ -312,6 +327,7 @@ fun HomeScreen(
     calendarState: com.example.focuslauncher.ui.calendar.CalendarUiState,
     motivationState: com.example.focuslauncher.ui.motivation.MotivationUiState,
     homeLayout: com.example.focuslauncher.data.settings.HomeLayout,
+    themeConfig: com.example.focuslauncher.data.theme.ThemeConfig,
     iconSize: Dp,
     onTodoAdd: (String) -> Unit,
     onTodoToggle: (com.example.focuslauncher.data.todos.Todo) -> Unit,
@@ -327,6 +343,13 @@ fun HomeScreen(
     onCardMove: (String, Boolean) -> Unit,
     onCardHidden: (String, Boolean) -> Unit,
     onLayoutChange: (String) -> Unit,
+    onThemeMode: (String) -> Unit,
+    onThemeSource: (String) -> Unit,
+    onThemePreset: (com.example.focuslauncher.data.theme.ThemePreset) -> Unit,
+    onThemeSeedHex: (Long) -> Unit,
+    onThemeCorner: (String) -> Unit,
+    onThemeIconSize: (Int) -> Unit,
+    onThemeReset: () -> Unit,
     onDockPick: (Int, AppInfo?) -> Unit,
     loadIcon: suspend (AppInfo) -> Drawable?,
 ) {
@@ -337,6 +360,7 @@ fun HomeScreen(
     var todosOpen by remember { mutableStateOf(false) }
     var notesOpen by remember { mutableStateOf(false) }
     var homeCustomOpen by remember { mutableStateOf(false) }
+    var themeOpen by remember { mutableStateOf(false) }
     var pendingPause by remember { mutableStateOf<AppInfo?>(null) }
     BackHandler(enabled = drawerOpen) { drawerOpen = false }
     BackHandler(enabled = manageOpen) { manageOpen = false }
@@ -345,6 +369,7 @@ fun HomeScreen(
     BackHandler(enabled = todosOpen) { todosOpen = false }
     BackHandler(enabled = notesOpen) { notesOpen = false }
     BackHandler(enabled = homeCustomOpen) { homeCustomOpen = false }
+    BackHandler(enabled = themeOpen) { themeOpen = false }
     fun handleLaunch(app: AppInfo) {
         if (app.packageName in appsState.gatedPackages ||
             app.packageName in appsState.blockedPackages
@@ -381,9 +406,10 @@ fun HomeScreen(
                         onRefreshUsage()
                         usageOpen = true
                     },
-                    onFocusClick = { focusSettingsOpen = true },
-                    onHomeClick = { homeCustomOpen = true },
-                )
+                onFocusClick = { focusSettingsOpen = true },
+                onHomeClick = { homeCustomOpen = true },
+                onThemeClick = { themeOpen = true },
+            )
                 HorizontalDivider()
                 if (minimal && !focusActive) {
                     MinimalIntention(
@@ -534,6 +560,20 @@ fun HomeScreen(
                 modifier = Modifier.zIndex(2f),
             )
         }
+        if (themeOpen) {
+            ThemeSettingsScreen(
+                config = themeConfig,
+                onMode = onThemeMode,
+                onSource = onThemeSource,
+                onPreset = onThemePreset,
+                onSeedHex = onThemeSeedHex,
+                onCorner = onThemeCorner,
+                onIconSize = onThemeIconSize,
+                onReset = onThemeReset,
+                onClose = { themeOpen = false },
+                modifier = Modifier.zIndex(2f),
+            )
+        }
         val gated = pendingPause
         if (gated != null) {
             PauseScreen(
@@ -601,6 +641,7 @@ fun BlankHome(
     onUsageClick: () -> Unit = {},
     onFocusClick: () -> Unit = {},
     onHomeClick: () -> Unit = {},
+    onThemeClick: () -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -627,6 +668,9 @@ fun BlankHome(
             }
             OutlinedButton(onClick = onHomeClick) {
                 Text(text = stringResource(R.string.home_customize))
+            }
+            OutlinedButton(onClick = onThemeClick) {
+                Text(text = stringResource(R.string.theme_button))
             }
         }
         Spacer(modifier = Modifier.height(8.dp))

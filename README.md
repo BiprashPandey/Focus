@@ -25,6 +25,9 @@ default. Local-first and private.
   (quick capture, pinning), calendar card (next 3 events, opt-in),
   daily intention + tone-matched quote (3/day cap, quiet hours),
   reorderable/hideable cards with Minimal and Dashboard layouts.
+- **Theme system** — seed-color palettes (8 presets + custom HEX),
+  System/Light/Dark/AMOLED modes, wallpaper/system/custom sources,
+  corner styles, icon size. Design tokens in `themeGuide.md`.
 
 ## Stack
 

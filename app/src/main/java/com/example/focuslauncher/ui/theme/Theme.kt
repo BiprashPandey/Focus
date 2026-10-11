@@ -44,11 +44,15 @@ fun FocusLauncherTheme(
         else -> systemDark
     }
     val context = LocalContext.current
+    val supportsDynamic = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    // Wallpaper colors come from the OS dynamic palette on Android 12+
+    // (third-party apps cannot read the wallpaper bitmap directly).
+    val useDynamic = supportsDynamic &&
+        (config.colorSource == ColorSources.SYSTEM || config.colorSource == ColorSources.WALLPAPER)
     val colorScheme: ColorScheme = remember(config, dark, context) {
         when {
             config.mode == ThemeModes.AMOLED -> SeedScheme.amoled(effectiveSeed(config).toInt())
-            config.colorSource == ColorSources.SYSTEM &&
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            useDynamic -> {
                 if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
             }
             config.colorSource == ColorSources.SYSTEM -> {
