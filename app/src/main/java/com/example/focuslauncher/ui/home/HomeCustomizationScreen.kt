@@ -1,20 +1,20 @@
 package com.example.focuslauncher.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +29,8 @@ import com.example.focuslauncher.R
 import com.example.focuslauncher.data.settings.HomeCards
 import com.example.focuslauncher.data.settings.HomeLayout
 import com.example.focuslauncher.data.settings.Layouts
+import com.example.focuslauncher.ui.components.GroupDivider
+import com.example.focuslauncher.ui.components.SettingsGroup
 
 @Composable
 fun HomeCustomizationScreen(
@@ -61,54 +63,64 @@ fun HomeCustomizationScreen(
                 }
             }
             item(key = "layout") {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    FilterChip(
-                        selected = layout.layout == Layouts.DASHBOARD,
-                        onClick = { onLayout(Layouts.DASHBOARD) },
-                        label = { Text(stringResource(R.string.home_layout_dashboard)) },
-                    )
-                    FilterChip(
-                        selected = layout.layout == Layouts.MINIMAL,
-                        onClick = { onLayout(Layouts.MINIMAL) },
-                        label = { Text(stringResource(R.string.home_layout_minimal)) },
-                    )
+                SettingsGroup(title = null) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FilterChip(
+                            shape = CircleShape,
+                            selected = layout.layout == Layouts.DASHBOARD,
+                            onClick = { onLayout(Layouts.DASHBOARD) },
+                            label = { Text(stringResource(R.string.home_layout_dashboard)) },
+                        )
+                        FilterChip(
+                            shape = CircleShape,
+                            selected = layout.layout == Layouts.MINIMAL,
+                            onClick = { onLayout(Layouts.MINIMAL) },
+                            label = { Text(stringResource(R.string.home_layout_minimal)) },
+                        )
+                    }
                 }
-                HorizontalDivider()
             }
-            val order = layout.order.filter { it in HomeCards.defaultOrder } +
-                HomeCards.defaultOrder.filter { it !in layout.order }
-            items(order, key = { it }) { card ->
-                Row(
-                    modifier = Modifier.fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Checkbox(
-                        checked = card !in layout.hidden,
-                        onCheckedChange = { onHidden(card, !it) },
-                    )
-                    Text(
-                        text = cardName(card),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.weight(1f),
-                    )
-                    IconButton(onClick = { onMove(card, true) }) {
-                        Icon(
-                            Icons.Filled.KeyboardArrowUp,
-                            contentDescription = stringResource(R.string.home_move_up),
-                        )
-                    }
-                    IconButton(onClick = { onMove(card, false) }) {
-                        Icon(
-                            Icons.Filled.KeyboardArrowDown,
-                            contentDescription = stringResource(R.string.home_move_down),
-                        )
+            item(key = "cards") {
+                val order = layout.order.filter { it in HomeCards.defaultOrder } +
+                    HomeCards.defaultOrder.filter { it !in layout.order }
+                SettingsGroup(title = stringResource(R.string.home_cards_title)) {
+                    order.forEachIndexed { index, card ->
+                        if (index > 0) GroupDivider()
+                        Row(
+                            modifier = Modifier.fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Checkbox(
+                                checked = card !in layout.hidden,
+                                onCheckedChange = { onHidden(card, !it) },
+                            )
+                            Text(
+                                text = cardName(card),
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            IconButton(onClick = { onMove(card, true) }) {
+                                Icon(
+                                    Icons.Filled.KeyboardArrowUp,
+                                    contentDescription = stringResource(R.string.home_move_up),
+                                )
+                            }
+                            IconButton(onClick = { onMove(card, false) }) {
+                                Icon(
+                                    Icons.Filled.KeyboardArrowDown,
+                                    contentDescription = stringResource(R.string.home_move_down),
+                                )
+                            }
+                        }
                     }
                 }
-                HorizontalDivider()
+            }
+            item(key = "bottom-space") {
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }

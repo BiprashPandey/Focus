@@ -9,6 +9,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -42,6 +43,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.focuslauncher.R
@@ -64,6 +66,7 @@ fun DrawerScreen(
     modifier: Modifier = Modifier,
     onSetLevel: (AppInfo, AppLevel) -> Unit = { _, _ -> },
     focusHeader: String? = null,
+    iconSize: Dp = 40.dp,
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -87,7 +90,10 @@ fun DrawerScreen(
         scope.launch { listState.scrollToItem(index) }
     }
 
-    Surface(modifier = modifier.fillMaxSize()) {
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+    ) {
         Column(modifier = Modifier.fillMaxSize()) {
             OutlinedTextField(
                 value = state.query,
@@ -97,6 +103,7 @@ fun DrawerScreen(
                     Icon(Icons.Filled.Search, contentDescription = null)
                 },
                 singleLine = true,
+                shape = CircleShape,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
@@ -137,6 +144,7 @@ fun DrawerScreen(
                                 onLaunch = onLaunch,
                                 onSetLevel = onSetLevel,
                                 loadIcon = loadIcon,
+                                iconSize = iconSize,
                             )
                         }
                     }
@@ -148,6 +156,7 @@ fun DrawerScreen(
                                 onLaunch = onLaunch,
                                 onSetLevel = onSetLevel,
                                 loadIcon = loadIcon,
+                                iconSize = iconSize,
                             )
                         }
                     }
@@ -192,6 +201,7 @@ private fun DrawerRow(
     onLaunch: (AppInfo) -> Unit,
     onSetLevel: (AppInfo, AppLevel) -> Unit,
     loadIcon: suspend (AppInfo) -> Drawable?,
+    iconSize: Dp = 40.dp,
 ) {
     val context = LocalContext.current
     var menuOpen by remember(app.key) { mutableStateOf(false) }
@@ -207,7 +217,7 @@ private fun DrawerRow(
                 .padding(horizontal = 24.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AppIcon(app = app, loadIcon = loadIcon)
+            AppIcon(app = app, loadIcon = loadIcon, size = iconSize)
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = app.label, style = MaterialTheme.typography.bodyMedium)
@@ -328,6 +338,7 @@ private fun TuckedFolder(
     onLaunch: (AppInfo) -> Unit,
     onSetLevel: (AppInfo, AppLevel) -> Unit,
     loadIcon: suspend (AppInfo) -> Drawable?,
+    iconSize: Dp = 40.dp,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -359,6 +370,7 @@ private fun TuckedFolder(
                     onLaunch = onLaunch,
                     onSetLevel = onSetLevel,
                     loadIcon = loadIcon,
+                    iconSize = iconSize,
                 )
             }
         }

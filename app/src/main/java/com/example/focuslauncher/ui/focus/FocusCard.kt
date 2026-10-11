@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -83,6 +84,7 @@ private fun IdleFocusContent(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             state.profiles.forEachIndexed { index, p ->
                 FilterChip(
+                    shape = CircleShape,
                     selected = index == selectedProfile,
                     onClick = { selectedProfile = index },
                     label = { Text(p.name) },
@@ -96,6 +98,7 @@ private fun IdleFocusContent(
         ) {
             FocusDurations.presets.forEach { min ->
                 FilterChip(
+                    shape = CircleShape,
                     selected = customMin == null && selectedDuration == min,
                     onClick = {
                         selectedDuration = min

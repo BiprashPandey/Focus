@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.focuslauncher.R
 import com.example.focuslauncher.domain.model.AppInfo
@@ -46,6 +47,7 @@ fun ManageAppsScreen(
     onClose: () -> Unit,
     loadIcon: suspend (AppInfo) -> Drawable?,
     modifier: Modifier = Modifier,
+    iconSize: Dp = 40.dp,
 ) {
     Surface(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -77,6 +79,7 @@ fun ManageAppsScreen(
                         onSetLevel = onSetLevel,
                         onSetLimit = onSetLimit,
                         loadIcon = loadIcon,
+                        iconSize = iconSize,
                     )
                     HorizontalDivider()
                 }
@@ -91,6 +94,7 @@ private fun ManageRow(
     onSetLevel: (AppInfo, AppLevel) -> Unit,
     onSetLimit: (AppInfo, Int?) -> Unit,
     loadIcon: suspend (AppInfo) -> Drawable?,
+    iconSize: Dp = 40.dp,
 ) {
     var levelMenu by remember(row.app.key, row.level) { mutableStateOf(false) }
     var limitMenu by remember(row.app.key, row.dailyLimitMin) { mutableStateOf(false) }
@@ -98,7 +102,7 @@ private fun ManageRow(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AppIcon(app = row.app, loadIcon = loadIcon)
+        AppIcon(app = row.app, loadIcon = loadIcon, size = iconSize)
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(text = row.app.label, style = MaterialTheme.typography.bodyMedium)

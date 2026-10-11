@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -95,6 +96,7 @@ fun MotivationCard(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Tones.all.forEach { tone ->
                     FilterChip(
+                        shape = CircleShape,
                         selected = state.tone == tone,
                         onClick = { onToneChange(tone) },
                         label = { Text(toneLabel(tone)) },

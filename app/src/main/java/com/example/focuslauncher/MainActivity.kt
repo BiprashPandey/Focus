@@ -44,6 +44,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
@@ -138,6 +139,7 @@ class MainActivity : ComponentActivity() {
                         calendarState = calendarState,
                         motivationState = motivationState,
                         homeLayout = homeLayout,
+                        iconSize = themeConfig.iconSizeDp.dp,
                         onQueryChange = appsViewModel::onQueryChange,
                         onLaunchApp = ::launchApp,
                         onSetLevel = appsViewModel::setLevel,
@@ -310,6 +312,7 @@ fun HomeScreen(
     calendarState: com.example.focuslauncher.ui.calendar.CalendarUiState,
     motivationState: com.example.focuslauncher.ui.motivation.MotivationUiState,
     homeLayout: com.example.focuslauncher.data.settings.HomeLayout,
+    iconSize: Dp,
     onTodoAdd: (String) -> Unit,
     onTodoToggle: (com.example.focuslauncher.data.todos.Todo) -> Unit,
     onTodoDelete: (Long) -> Unit,
@@ -445,6 +448,7 @@ fun HomeScreen(
                 onLaunch = ::handleLaunch,
                 onPick = onDockPick,
                 loadIcon = loadIcon,
+                iconSize = iconSize,
             )
         }
         // Explicit z-order: drawer < sheets < pause. Dialogs (dock picker)
@@ -461,6 +465,7 @@ fun HomeScreen(
                 loadIcon = loadIcon,
                 onSetLevel = onSetLevel,
                 focusHeader = focusHeader,
+                iconSize = iconSize,
                 modifier = Modifier.onSwipeDown { drawerOpen = false }.zIndex(1f),
             )
         }
@@ -472,6 +477,7 @@ fun HomeScreen(
                 onSetLimit = onManageSetLimit,
                 onClose = { manageOpen = false },
                 loadIcon = loadIcon,
+                iconSize = iconSize,
                 modifier = Modifier.zIndex(2f),
             )
         }
@@ -495,6 +501,7 @@ fun HomeScreen(
                 onClearSchedule = onClearFocusSchedule,
                 onClose = { focusSettingsOpen = false },
                 loadIcon = loadIcon,
+                iconSize = iconSize,
                 modifier = Modifier.zIndex(2f),
             )
         }

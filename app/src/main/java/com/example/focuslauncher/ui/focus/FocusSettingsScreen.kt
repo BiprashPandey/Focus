@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
@@ -35,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.focuslauncher.R
 import com.example.focuslauncher.domain.focus.FocusSchedule
@@ -57,6 +59,7 @@ fun FocusSettingsScreen(
     onClose: () -> Unit,
     loadIcon: suspend (AppInfo) -> Drawable?,
     modifier: Modifier = Modifier,
+    iconSize: Dp = 40.dp,
 ) {
     Surface(modifier = modifier.fillMaxSize()) {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -86,6 +89,7 @@ fun FocusSettingsScreen(
                 ) {
                     state.profiles.forEach { p ->
                         FilterChip(
+                            shape = CircleShape,
                             selected = p.id == state.selectedId,
                             onClick = { onSelectProfile(p.id) },
                             label = { Text(p.name) },
@@ -136,7 +140,7 @@ fun FocusSettingsScreen(
                         enabled = !row.isProtected,
                         onCheckedChange = { onToggleAllowed(row.app, it) },
                     )
-                    AppIcon(app = row.app, loadIcon = loadIcon)
+                    AppIcon(app = row.app, loadIcon = loadIcon, size = iconSize)
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = row.app.label,
@@ -212,6 +216,7 @@ private fun ScheduleEditor(
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             DayOfWeek.entries.forEach { day ->
                 FilterChip(
+                    shape = CircleShape,
                     selected = day.value in days,
                     onClick = {
                         days = if (day.value in days) days - day.value else days + day.value

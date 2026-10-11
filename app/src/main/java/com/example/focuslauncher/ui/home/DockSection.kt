@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.focuslauncher.R
@@ -49,47 +50,57 @@ fun DockSection(
     onPick: (index: Int, app: AppInfo?) -> Unit,
     loadIcon: suspend (AppInfo) -> Drawable?,
     modifier: Modifier = Modifier,
+    iconSize: Dp = 52.dp,
 ) {
     var pickerFor by remember { mutableStateOf<Int?>(null) }
 
-    Row(
+    Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 12.dp)
+            .padding(bottom = 16.dp),
+        shape = MaterialTheme.shapes.extraLarge,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
     ) {
-        dock.forEachIndexed { index, app ->
-            val slotLabel = stringResource(R.string.dock_slot, index + 1)
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .combinedClickable(
-                        onClick = {
-                            if (app == null) pickerFor = index else onLaunch(app)
-                        },
-                        onLongClick = { pickerFor = index },
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (app != null) {
-                    AppIcon(app = app, loadIcon = loadIcon, modifier = Modifier.size(52.dp))
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .border(
-                                1.dp,
-                                MaterialTheme.colorScheme.outline,
-                                RoundedCornerShape(12.dp),
-                            ),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            Icons.Filled.Add,
-                            contentDescription = slotLabel,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            dock.forEachIndexed { index, app ->
+                val slotLabel = stringResource(R.string.dock_slot, index + 1)
+                Box(
+                    modifier = Modifier
+                        .size(iconSize + 12.dp)
+                        .combinedClickable(
+                            onClick = {
+                                if (app == null) pickerFor = index else onLaunch(app)
+                            },
+                            onLongClick = { pickerFor = index },
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (app != null) {
+                        AppIcon(app = app, loadIcon = loadIcon, size = iconSize)
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(iconSize)
+                                .border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.outline,
+                                    MaterialTheme.shapes.small,
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Filled.Add,
+                                contentDescription = slotLabel,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
             }

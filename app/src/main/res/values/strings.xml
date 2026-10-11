@@ -103,6 +103,7 @@
     <string name="calendar_untitled">Untitled event</string>
     <string name="home_customize">Home</string>
     <string name="home_customize_title">Customize home</string>
+    <string name="home_cards_title">Home cards</string>
     <string name="home_layout_dashboard">Dashboard</string>
     <string name="home_layout_minimal">Minimal</string>
     <string name="home_move_up">Move up</string>
