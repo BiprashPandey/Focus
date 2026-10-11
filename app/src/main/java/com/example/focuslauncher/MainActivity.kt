@@ -45,9 +45,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import com.example.focuslauncher.data.settings.HomeCards
 import com.example.focuslauncher.data.settings.Layouts
+import com.example.focuslauncher.domain.focus.countdown
 import com.example.focuslauncher.domain.model.AppInfo
 import com.example.focuslauncher.domain.model.AppLevel
 import com.example.focuslauncher.ui.calendar.CalendarCard
@@ -55,6 +57,7 @@ import com.example.focuslauncher.ui.drawer.AppsUiState
 import com.example.focuslauncher.ui.drawer.AppsViewModel
 import com.example.focuslauncher.ui.drawer.DrawerScreen
 import com.example.focuslauncher.ui.focus.FocusCard
+import com.example.focuslauncher.ui.focus.ActiveFocusBar
 import com.example.focuslauncher.ui.focus.FocusSettingsScreen
 import com.example.focuslauncher.ui.focus.FocusSettingsViewModel
 import com.example.focuslauncher.ui.focus.FocusViewModel
@@ -73,6 +76,7 @@ import com.example.focuslauncher.ui.notes.NotesViewModel
 import com.example.focuslauncher.ui.pause.PauseScreen
 import com.example.focuslauncher.ui.pause.rememberPauseLine
 import com.example.focuslauncher.ui.theme.FocusLauncherTheme
+import com.example.focuslauncher.ui.theme.ThemeViewModel
 import com.example.focuslauncher.ui.todos.TodosCard
 import com.example.focuslauncher.ui.todos.TodosScreen
 import com.example.focuslauncher.ui.todos.TodosViewModel
@@ -93,6 +97,7 @@ class MainActivity : ComponentActivity() {
     private val calendarViewModel: CalendarViewModel by viewModels()
     private val motivationViewModel: MotivationViewModel by viewModels()
     private val homeSettingsViewModel: HomeSettingsViewModel by viewModels()
+    private val themeViewModel: ThemeViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -101,7 +106,8 @@ class MainActivity : ComponentActivity() {
 
     private fun render() {
         setContent {
-            FocusLauncherTheme {
+            val themeConfig by themeViewModel.config.collectAsState()
+            FocusLauncherTheme(config = themeConfig) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background,
@@ -423,6 +429,16 @@ fun HomeScreen(
                         .padding(8.dp),
                 )
             }
+            val running = focusState.active
+            if (running != null) {
+                ActiveFocusBar(
+                    active = running,
+                    now = focusState.now,
+                    profileName = focusState.profiles
+                        .firstOrNull { it.id == running.profileId }?.name,
+                    onStop = onStopFocus,
+                )
+            }
             DockSection(
                 dock = homeState.dock,
                 allApps = homeState.allApps,
@@ -431,6 +447,12 @@ fun HomeScreen(
                 loadIcon = loadIcon,
             )
         }
+        // Explicit z-order: drawer < sheets < pause. Dialogs (dock picker)
+        // live in their own window above everything.
+        val focusHeader = focusState.active?.let { active ->
+            val name = focusState.profiles.firstOrNull { it.id == active.profileId }?.name
+            "${name ?: "Focus"} · ${active.countdown(focusState.now)}"
+        }
         if (drawerOpen) {
             DrawerScreen(
                 state = appsState,
@@ -438,7 +460,8 @@ fun HomeScreen(
                 onLaunch = ::handleLaunch,
                 loadIcon = loadIcon,
                 onSetLevel = onSetLevel,
-                modifier = Modifier.onSwipeDown { drawerOpen = false },
+                focusHeader = focusHeader,
+                modifier = Modifier.onSwipeDown { drawerOpen = false }.zIndex(1f),
             )
         }
         if (manageOpen) {
@@ -449,6 +472,7 @@ fun HomeScreen(
                 onSetLimit = onManageSetLimit,
                 onClose = { manageOpen = false },
                 loadIcon = loadIcon,
+                modifier = Modifier.zIndex(2f),
             )
         }
         if (usageOpen) {
@@ -456,6 +480,7 @@ fun HomeScreen(
                 hasPermission = appsState.hasUsagePermission,
                 onOpenSettings = onOpenUsageSettings,
                 onClose = { usageOpen = false },
+                modifier = Modifier.zIndex(2f),
             )
         }
         if (focusSettingsOpen) {
@@ -470,6 +495,7 @@ fun HomeScreen(
                 onClearSchedule = onClearFocusSchedule,
                 onClose = { focusSettingsOpen = false },
                 loadIcon = loadIcon,
+                modifier = Modifier.zIndex(2f),
             )
         }
         if (todosOpen) {
@@ -479,6 +505,7 @@ fun HomeScreen(
                 onDelete = onTodoDelete,
                 onClearCompleted = onTodosClearCompleted,
                 onClose = { todosOpen = false },
+                modifier = Modifier.zIndex(2f),
             )
         }
         if (notesOpen) {
@@ -487,6 +514,7 @@ fun HomeScreen(
                 onTogglePin = onNoteTogglePin,
                 onDelete = onNoteDelete,
                 onClose = { notesOpen = false },
+                modifier = Modifier.zIndex(2f),
             )
         }
         if (homeCustomOpen) {
@@ -496,6 +524,7 @@ fun HomeScreen(
                 onHidden = onCardHidden,
                 onLayout = onLayoutChange,
                 onClose = { homeCustomOpen = false },
+                modifier = Modifier.zIndex(2f),
             )
         }
         val gated = pendingPause
@@ -513,6 +542,7 @@ fun HomeScreen(
                     drawerOpen = false
                 },
                 onClose = { pendingPause = null },
+                modifier = Modifier.zIndex(3f),
             )
         }
     }

@@ -66,6 +66,8 @@ dependencies {
     implementation(libs.datastore.preferences)
     implementation(libs.workmanager.ktx)
     implementation(libs.coil.compose)
+    implementation(libs.material)
+    implementation(libs.palette.ktx)
 
     testImplementation(libs.junit)
 

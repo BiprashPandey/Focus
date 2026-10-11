@@ -13,3 +13,6 @@ local.properties
 .idea/
 *.iml
 .DS_Store
+agentGuidelines.md
+guidelines.md
+themeGuide.md

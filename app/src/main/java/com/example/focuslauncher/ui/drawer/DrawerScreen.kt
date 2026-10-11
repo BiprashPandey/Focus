@@ -63,6 +63,7 @@ fun DrawerScreen(
     loadIcon: suspend (AppInfo) -> Drawable?,
     modifier: Modifier = Modifier,
     onSetLevel: (AppInfo, AppLevel) -> Unit = { _, _ -> },
+    focusHeader: String? = null,
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -100,7 +101,14 @@ fun DrawerScreen(
                     .fillMaxWidth()
                     .padding(16.dp),
             )
-            if (state.inFocus) {
+            if (focusHeader != null) {
+                Text(
+                    text = focusHeader,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+                )
+            } else if (state.inFocus) {
                 Text(
                     text = stringResource(R.string.focus_active_banner),
                     style = MaterialTheme.typography.bodySmall,

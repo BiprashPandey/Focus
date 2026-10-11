@@ -124,7 +124,6 @@ private fun IdleFocusContent(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ActiveFocusContent(
     state: FocusUiState,
@@ -133,6 +132,34 @@ private fun ActiveFocusContent(
     val active = state.active ?: return
     val profileName = state.profiles.firstOrNull { it.id == active.profileId }?.name
         ?: stringResource(R.string.focus_session)
+
+    Column(
+        modifier = Modifier.padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(text = profileName, style = MaterialTheme.typography.titleMedium)
+        Text(
+            text = active.countdown(state.now),
+            style = MaterialTheme.typography.displaySmall,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        EndFocusControl(active = active, onStop = onStop, showHint = true)
+    }
+}
+
+/**
+ * Emergency exit shared by the full card and the pinned bar: long-press End,
+ * then a 10-second wait with an optional reason. Always dismissible.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun EndFocusControl(
+    active: com.example.focuslauncher.domain.focus.FocusState.Active,
+    onStop: (String?) -> Unit,
+    showHint: Boolean,
+    modifier: Modifier = Modifier,
+) {
     var confirming by remember(active.sessionId) { mutableStateOf(false) }
     var reason by remember(active.sessionId) { mutableStateOf("") }
     var waitLeft by remember(active.sessionId) { mutableIntStateOf(FOCUS_EXIT_WAIT_SECONDS) }
@@ -146,24 +173,16 @@ private fun ActiveFocusContent(
         }
     }
 
-    Column(
-        modifier = Modifier.padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(text = profileName, style = MaterialTheme.typography.titleMedium)
-        Text(
-            text = active.countdown(state.now),
-            style = MaterialTheme.typography.displaySmall,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         if (!confirming) {
-            Text(
-                text = stringResource(R.string.focus_end_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+            if (showHint) {
+                Text(
+                    text = stringResource(R.string.focus_end_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             OutlinedButton(
                 onClick = {},
                 modifier = Modifier

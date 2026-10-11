@@ -3,8 +3,14 @@ package com.example.focuslauncher.data.settings
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.focuslauncher.data.theme.ColorSources
+import com.example.focuslauncher.data.theme.CornerStyles
+import com.example.focuslauncher.data.theme.ThemeConfig
+import com.example.focuslauncher.data.theme.ThemeModes
+import com.example.focuslauncher.data.theme.ThemePresets
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -19,6 +25,12 @@ private val HIDDEN_CARDS = stringPreferencesKey("hidden_cards")
 private val LAYOUT = stringPreferencesKey("home_layout")
 private val NUDGE_DATE = stringPreferencesKey("nudge_date")
 private val NUDGE_COUNT = intPreferencesKey("nudge_count")
+private val THEME_MODE = stringPreferencesKey("theme_mode")
+private val COLOR_SOURCE = stringPreferencesKey("color_source")
+private val SEED_COLOR = longPreferencesKey("seed_color")
+private val WALLPAPER_SEED = longPreferencesKey("wallpaper_seed")
+private val CORNER_STYLE = stringPreferencesKey("corner_style")
+private val ICON_SIZE = intPreferencesKey("icon_size")
 
 /** Home cards known to the launcher, in default top-to-bottom order. */
 object HomeCards {
@@ -114,5 +126,47 @@ class SettingsRepository @Inject constructor(
                 prefs[NUDGE_COUNT] = 1
             }
         }
+    }
+
+    val themeConfig: Flow<ThemeConfig> = context.settingsStore.data.map { prefs ->
+        ThemeConfig(
+            mode = prefs[THEME_MODE]?.takeIf { it in ThemeModes.all } ?: ThemeModes.SYSTEM,
+            colorSource = prefs[COLOR_SOURCE]?.takeIf { it in ColorSources.all }
+                ?: ColorSources.SYSTEM,
+            seedColor = prefs[SEED_COLOR] ?: ThemePresets.AURORA.seed,
+            wallpaperSeed = prefs[WALLPAPER_SEED],
+            cornerStyle = prefs[CORNER_STYLE]?.takeIf { it in CornerStyles.all }
+                ?: CornerStyles.ROUNDED,
+            iconSizeDp = (prefs[ICON_SIZE] ?: 56).coerceIn(40, 72),
+        )
+    }
+
+    suspend fun setThemeMode(mode: String) {
+        require(mode in ThemeModes.all)
+        context.settingsStore.edit { it[THEME_MODE] = mode }
+    }
+
+    suspend fun setColorSource(source: String) {
+        require(source in ColorSources.all)
+        context.settingsStore.edit { it[COLOR_SOURCE] = source }
+    }
+
+    suspend fun setSeedColor(argb: Long) {
+        context.settingsStore.edit { it[SEED_COLOR] = argb }
+    }
+
+    suspend fun setWallpaperSeed(argb: Long?) {
+        context.settingsStore.edit { prefs ->
+            if (argb == null) prefs.remove(WALLPAPER_SEED) else prefs[WALLPAPER_SEED] = argb
+        }
+    }
+
+    suspend fun setCornerStyle(style: String) {
+        require(style in CornerStyles.all)
+        context.settingsStore.edit { it[CORNER_STYLE] = style }
+    }
+
+    suspend fun setIconSize(dp: Int) {
+        context.settingsStore.edit { it[ICON_SIZE] = dp.coerceIn(40, 72) }
     }
 }
