@@ -1,7 +1,12 @@
 package com.example.focuslauncher.ui.home
 
+import android.app.Activity
+import android.app.KeyguardManager
 import android.graphics.drawable.Drawable
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -31,19 +36,25 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.example.focuslauncher.R
 import com.example.focuslauncher.data.settings.HomeCards
 import com.example.focuslauncher.data.settings.HomeLayout
@@ -154,10 +165,54 @@ fun HomeScreen(
     var drawerOpen by remember { mutableStateOf(false) }
     var overlay by remember { mutableStateOf<Overlay?>(null) }
     var pendingPause by remember { mutableStateOf<AppInfo?>(null) }
+    var hiddenUnlocked by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     BackHandler(enabled = drawerOpen) { drawerOpen = false }
     BackHandler(enabled = overlay != null) { overlay = null }
 
+    val hiddenUnlockLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) hiddenUnlocked = true
+    }
+
+    fun requestHiddenUnlock() {
+        if (hiddenUnlocked) return
+        val keyguard = context.getSystemService(KeyguardManager::class.java)
+        val intent = if (keyguard != null && keyguard.isDeviceSecure) {
+            @Suppress("DEPRECATION")
+            keyguard.createConfirmDeviceCredentialIntent(
+                context.getString(R.string.hidden_unlock_title),
+                context.getString(R.string.hidden_unlock_description),
+            )
+        } else {
+            null
+        }
+        if (intent != null) {
+            hiddenUnlockLauncher.launch(intent)
+        } else {
+            Toast.makeText(
+                context,
+                R.string.hidden_unlock_no_lock,
+                Toast.LENGTH_LONG,
+            ).show()
+        }
+    }
+
+    LaunchedEffect(drawerOpen) {
+        if (!drawerOpen) hiddenUnlocked = false
+    }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) hiddenUnlocked = false
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     fun handleLaunch(app: AppInfo) {
+        drawerOpen = false
         if (app.packageName in appsState.gatedPackages ||
             app.packageName in appsState.blockedPackages
         ) {
@@ -186,7 +241,13 @@ fun HomeScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         AuroraBackdrop()
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .onSwipeUp {
+                    if (overlay == null && !drawerOpen) drawerOpen = true
+                },
+        ) {
             Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 HomeHeader(
                     isRoleAvailable = isRoleAvailable,
@@ -200,7 +261,6 @@ fun HomeScreen(
                     onFocusClick = { overlay = Overlay.FOCUS },
                     onHomeClick = { overlay = Overlay.HOME },
                     onThemeClick = { overlay = Overlay.THEME },
-                    modifier = Modifier.onSwipeUp { drawerOpen = true },
                 )
                 if (minimal) {
                     MinimalIntention(
@@ -284,8 +344,9 @@ fun HomeScreen(
                 onSetLevel = onSetLevel,
                 focusHeader = focusHeader,
                 iconSize = iconSize,
+                hiddenUnlocked = hiddenUnlocked,
+                onRequestHiddenUnlock = ::requestHiddenUnlock,
                 onClose = { drawerOpen = false },
-                modifier = Modifier.onSwipeDown { drawerOpen = false },
             )
         }
 
@@ -510,24 +571,18 @@ fun MinimalIntention(
     }
 }
 
-private fun Modifier.onSwipeUp(onSwipe: () -> Unit): Modifier = pointerInput(Unit) {
-    var total = 0f
-    detectVerticalDragGestures(
-        onDragStart = { total = 0f },
-        onDragCancel = { total = 0f },
-        onDragEnd = { if (total < -SWIPE_PX) onSwipe() },
-        onVerticalDrag = { _, dragAmount -> total += dragAmount },
-    )
-}
-
-private fun Modifier.onSwipeDown(onSwipe: () -> Unit): Modifier = pointerInput(Unit) {
-    var total = 0f
-    detectVerticalDragGestures(
-        onDragStart = { total = 0f },
-        onDragCancel = { total = 0f },
-        onDragEnd = { if (total > SWIPE_PX) onSwipe() },
-        onVerticalDrag = { _, dragAmount -> total += dragAmount },
-    )
+@Composable
+private fun Modifier.onSwipeUp(onSwipe: () -> Unit): Modifier {
+    val currentOnSwipe by rememberUpdatedState(onSwipe)
+    return pointerInput(Unit) {
+        var total = 0f
+        detectVerticalDragGestures(
+            onDragStart = { total = 0f },
+            onDragCancel = { total = 0f },
+            onDragEnd = { if (total < -SWIPE_PX) currentOnSwipe() },
+            onVerticalDrag = { _, dragAmount -> total += dragAmount },
+        )
+    }
 }
 
 private const val SWIPE_PX = 120f

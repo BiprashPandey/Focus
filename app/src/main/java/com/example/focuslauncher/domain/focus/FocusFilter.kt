@@ -9,13 +9,19 @@ import com.example.focuslauncher.domain.model.AppInfo
  */
 object FocusFilter {
 
-    /** Apps visible during focus: allowed packages + protected essentials. */
+    /**
+     * Apps visible during focus: allowed packages + protected essentials +
+     * [alwaysAllowed] extras (for example music players).
+     */
     fun visible(
         apps: List<AppInfo>,
         allowedPackages: Set<String>,
         protectedPackages: Set<String>,
+        alwaysAllowed: Set<String> = emptySet(),
     ): List<AppInfo> = apps.filter {
-        it.packageName in allowedPackages || it.packageName in protectedPackages
+        it.packageName in allowedPackages ||
+            it.packageName in protectedPackages ||
+            it.packageName in alwaysAllowed
     }
 
     /** Packages hidden during focus (informational; launching routes to pause). */
@@ -23,9 +29,14 @@ object FocusFilter {
         apps: List<AppInfo>,
         allowedPackages: Set<String>,
         protectedPackages: Set<String>,
+        alwaysAllowed: Set<String> = emptySet(),
     ): Set<String> = apps
         .map { it.packageName }
-        .filter { it !in allowedPackages && it !in protectedPackages }
+        .filter {
+            it !in allowedPackages &&
+                it !in protectedPackages &&
+                it !in alwaysAllowed
+        }
         .toSet()
 
     /** Parses `["pkg.a","pkg.b"]` (tolerant to spaces). Returns empty on garbage. */

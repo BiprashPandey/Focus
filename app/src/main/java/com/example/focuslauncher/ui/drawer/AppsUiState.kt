@@ -5,6 +5,8 @@ import com.example.focuslauncher.domain.model.AppInfo
 data class AppsUiState(
     val apps: List<AppInfo> = emptyList(),
     val tucked: List<AppInfo> = emptyList(),
+    /** Locked apps; the drawer renders these after a device-credential unlock. */
+    val hidden: List<AppInfo> = emptyList(),
     val gatedPackages: Set<String> = emptySet(),
     val blockedPackages: Set<String> = emptySet(),
     val inFocus: Boolean = false,

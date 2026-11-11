@@ -2,9 +2,9 @@ package com.example.focuslauncher.ui.focus
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,7 +27,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -43,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -50,6 +50,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.focuslauncher.R
 import com.example.focuslauncher.domain.focus.FocusDurations
@@ -326,10 +327,9 @@ private fun FocusRing(
 }
 
 /**
- * Emergency exit shared by the full card and the pinned bar: long-press End,
- * then a 10-second wait with an optional reason. Always dismissible.
+ * Emergency exit shared by the full card and the pinned bar: tap End, then a
+ * 10-second wait with an optional reason. Always dismissible.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun EndFocusControl(
     active: com.example.focuslauncher.domain.focus.FocusState.Active,
@@ -361,18 +361,27 @@ fun EndFocusControl(
                 )
                 Spacer(modifier = Modifier.size(8.dp))
             }
-            OutlinedButton(
-                onClick = {},
-                shape = CircleShape,
-                border = BorderStroke(1.dp, colors.bright.copy(alpha = 0.5f)),
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .combinedClickable(
-                        onClick = {},
-                        onLongClick = { confirming = true },
+                    .clip(CircleShape)
+                    .clickable(
+                        role = Role.Button,
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = LocalIndication.current,
+                        onClick = { confirming = true },
                     ),
+                shape = CircleShape,
+                color = Color.Transparent,
+                border = BorderStroke(1.dp, colors.bright.copy(alpha = 0.5f)),
             ) {
-                Text(stringResource(R.string.focus_end))
+                Text(
+                    text = stringResource(R.string.focus_end),
+                    style = MaterialTheme.typography.labelLarge,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(vertical = 12.dp),
+                )
             }
         } else {
             OutlinedTextField(

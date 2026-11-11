@@ -1,10 +1,13 @@
 package com.example.focuslauncher.data.usage
 
+import android.Manifest
 import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Process
+import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -28,12 +31,13 @@ class SystemUsageRepository @Inject constructor(
     private val appOps: AppOpsManager,
 ) : UsageRepository {
 
-    override fun hasPermission(): Boolean = appOpsAllowed() || recentStatsAvailable()
+    override fun hasPermission(): Boolean =
+        appOpsAllowed() || selfPermissionGranted() || recentStatsAvailable()
 
     /**
-     * Some OEMs (notably MIUI) keep reporting MODE_DEFAULT through AppOps even
-     * after the user grants usage access. Checking for recent stats covers
-     * that case; without access the query returns an empty list.
+     * Some OEMs (notably MIUI and HONOR) keep reporting MODE_DEFAULT through
+     * AppOps even after the user grants usage access. The permission check and
+     * a live stats probe cover those ROMs.
      */
     private fun appOpsAllowed(): Boolean = try {
         val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -55,13 +59,38 @@ class SystemUsageRepository @Inject constructor(
         false
     }
 
-    private fun recentStatsAvailable(): Boolean = try {
+    /** Recommended fallback when AppOps reports MODE_DEFAULT. */
+    private fun selfPermissionGranted(): Boolean =
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.PACKAGE_USAGE_STATS,
+        ) == PackageManager.PERMISSION_GRANTED
+
+    /**
+     * A granted permission always produces at least one stats entry or event.
+     * The list is accepted even when every entry reports zero foreground time,
+     * because some ROMs aggregate totals lazily.
+     */
+    private fun recentStatsAvailable(): Boolean {
         val now = System.currentTimeMillis()
-        val start = now - PERMISSION_PROBE_WINDOW_MS
-        usageStats.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, start, now)
-            ?.any { it.totalTimeInForeground > 0 } == true
-    } catch (_: SecurityException) {
-        false
+        return try {
+            val daily = usageStats.queryUsageStats(
+                UsageStatsManager.INTERVAL_DAILY,
+                now - PERMISSION_PROBE_WINDOW_MS,
+                now,
+            )
+            if (!daily.isNullOrEmpty()) return true
+            val best = usageStats.queryUsageStats(
+                UsageStatsManager.INTERVAL_BEST,
+                now - PERMISSION_PROBE_WINDOW_MS,
+                now,
+            )
+            if (!best.isNullOrEmpty()) return true
+            val events = usageStats.queryEvents(now - PERMISSION_EVENT_WINDOW_MS, now)
+            events?.getNextEvent(android.app.usage.UsageEvents.Event()) == true
+        } catch (_: SecurityException) {
+            false
+        }
     }
 
     override suspend fun todayMinutes(): Map<String, Int> = withContext(Dispatchers.IO) {
@@ -83,5 +112,6 @@ class SystemUsageRepository @Inject constructor(
 
     private companion object {
         const val PERMISSION_PROBE_WINDOW_MS = 7L * 24 * 60 * 60 * 1_000
+        const val PERMISSION_EVENT_WINDOW_MS = 24L * 60 * 60 * 1_000
     }
 }

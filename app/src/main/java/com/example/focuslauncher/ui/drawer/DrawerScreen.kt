@@ -7,6 +7,8 @@ import android.provider.Settings
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -52,6 +54,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,7 +65,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
@@ -82,13 +87,19 @@ import com.example.focuslauncher.ui.components.pressScale
 import com.example.focuslauncher.ui.theme.Accent
 import com.example.focuslauncher.ui.theme.FocusLauncherTheme
 import com.example.focuslauncher.ui.theme.colors
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.abs
+
+private const val UNLOCK_SWIPE_WINDOW_MS = 1_500L
 
 private sealed interface DrawerEntry {
     data class Header(val letter: Char, val count: Int) : DrawerEntry
     data class Row(val app: AppInfo) : DrawerEntry
     data class Folder(val count: Int, val expanded: Boolean) : DrawerEntry
     data class Tucked(val app: AppInfo) : DrawerEntry
+    data class HiddenHeader(val count: Int) : DrawerEntry
+    data class HiddenRow(val app: AppInfo) : DrawerEntry
 }
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -102,6 +113,8 @@ fun DrawerScreen(
     onSetLevel: (AppInfo, AppLevel) -> Unit = { _, _ -> },
     focusHeader: String? = null,
     iconSize: Dp = 40.dp,
+    hiddenUnlocked: Boolean = false,
+    onRequestHiddenUnlock: () -> Unit = {},
     onClose: () -> Unit = {},
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -110,13 +123,37 @@ fun DrawerScreen(
     var tuckedExpanded by remember { mutableStateOf(false) }
     var menuApp by remember { mutableStateOf<AppInfo?>(null) }
     var scrubLetter by remember { mutableStateOf<Char?>(null) }
+    var lastUnlockSwipeAt by remember { mutableStateOf(0L) }
+    var showUnlockHint by remember { mutableStateOf(false) }
+    val unlockSwipePx = with(LocalDensity.current) { 72.dp.toPx() }
+    val closeSwipePx = with(LocalDensity.current) { 96.dp.toPx() }
+
+    fun handleRightSwipe() {
+        if (hiddenUnlocked) return
+        val now = System.currentTimeMillis()
+        if (lastUnlockSwipeAt != 0L && now - lastUnlockSwipeAt <= UNLOCK_SWIPE_WINDOW_MS) {
+            lastUnlockSwipeAt = 0L
+            showUnlockHint = false
+            onRequestHiddenUnlock()
+        } else {
+            lastUnlockSwipeAt = now
+            showUnlockHint = true
+        }
+    }
+
+    LaunchedEffect(showUnlockHint) {
+        if (showUnlockHint) {
+            delay(UNLOCK_SWIPE_WINDOW_MS)
+            showUnlockHint = false
+        }
+    }
 
     val grouped = remember(state.apps) {
         state.apps
             .groupBy { initialOf(it.label) }
             .toSortedMap()
     }
-    val entries = remember(grouped, state.tucked, tuckedExpanded) {
+    val entries = remember(grouped, state.tucked, tuckedExpanded, state.hidden, hiddenUnlocked) {
         buildList {
             grouped.forEach { (letter, apps) ->
                 add(DrawerEntry.Header(letter, apps.size))
@@ -127,6 +164,10 @@ fun DrawerScreen(
                 if (tuckedExpanded) {
                     state.tucked.forEach { add(DrawerEntry.Tucked(it)) }
                 }
+            }
+            if (hiddenUnlocked && state.hidden.isNotEmpty()) {
+                add(DrawerEntry.HiddenHeader(state.hidden.size))
+                state.hidden.forEach { add(DrawerEntry.HiddenRow(it)) }
             }
         }
     }
@@ -141,7 +182,34 @@ fun DrawerScreen(
         scope.launch { gridState.scrollToItem(index) }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .pointerInput(hiddenUnlocked, unlockSwipePx, closeSwipePx) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    var totalX = 0f
+                    var totalY = 0f
+                    val startedAtTop = !gridState.canScrollBackward
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        val delta = change.positionChange()
+                        totalX += delta.x
+                        totalY += delta.y
+                        if (!change.pressed) break
+                    }
+                    if (abs(totalX) > abs(totalY) && totalX > unlockSwipePx) {
+                        handleRightSwipe()
+                    } else if (totalY > closeSwipePx &&
+                        abs(totalY) > abs(totalX) &&
+                        startedAtTop
+                    ) {
+                        onClose()
+                    }
+                }
+            },
+    ) {
         AuroraBackdrop(intensity = 0.9f)
         Box(
             modifier = Modifier
@@ -151,7 +219,11 @@ fun DrawerScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             ScreenHeader(
                 title = stringResource(R.string.all_apps),
-                subtitle = stringResource(R.string.apps_count, state.apps.size + state.tucked.size),
+                subtitle = stringResource(
+                    R.string.apps_count,
+                    state.apps.size + state.tucked.size +
+                        if (hiddenUnlocked) state.hidden.size else 0,
+                ),
                 onClose = onClose,
             )
             SearchField(
@@ -203,7 +275,7 @@ fun DrawerScreen(
                         CircularProgressIndicator()
                     }
                 }
-                state.apps.isEmpty() && state.tucked.isEmpty() -> {
+                entries.isEmpty() -> {
                     Box(
                         modifier = Modifier.weight(1f).fillMaxWidth(),
                         contentAlignment = Alignment.Center,
@@ -229,7 +301,10 @@ fun DrawerScreen(
                                 items = entries,
                                 key = { drawerKey(it) },
                                 span = { entry ->
-                                    if (entry is DrawerEntry.Header || entry is DrawerEntry.Folder) {
+                                    if (entry is DrawerEntry.Header ||
+                                        entry is DrawerEntry.Folder ||
+                                        entry is DrawerEntry.HiddenHeader
+                                    ) {
                                         GridItemSpan(maxLineSpan)
                                     } else {
                                         GridItemSpan(1)
@@ -262,6 +337,15 @@ fun DrawerScreen(
                                         onClick = { onLaunch(entry.app) },
                                         onLongClick = { menuApp = entry.app },
                                     )
+                                    is DrawerEntry.HiddenHeader -> HiddenHeader(count = entry.count)
+                                    is DrawerEntry.HiddenRow -> AppCell(
+                                        app = entry.app,
+                                        state = state,
+                                        loadIcon = loadIcon,
+                                        iconSize = iconSize,
+                                        onClick = { onLaunch(entry.app) },
+                                        onLongClick = { menuApp = entry.app },
+                                    )
                                 }
                             }
                         }
@@ -270,7 +354,9 @@ fun DrawerScreen(
                                 letters = headerIndexes.map { it.first },
                                 onJump = ::jumpTo,
                                 onScrub = { scrubLetter = it },
-                                modifier = Modifier.align(Alignment.CenterEnd),
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .padding(end = 12.dp),
                             )
                         }
                         scrubLetter?.let { letter ->
@@ -290,6 +376,34 @@ fun DrawerScreen(
                             }
                         }
                     }
+                }
+            }
+        }
+        if (showUnlockHint && !hiddenUnlocked) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 28.dp),
+                shape = CircleShape,
+                color = scheme.primaryContainer,
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Lock,
+                        contentDescription = null,
+                        tint = scheme.onPrimaryContainer,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.hidden_swipe_again),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = scheme.onPrimaryContainer,
+                    )
                 }
             }
         }
@@ -321,6 +435,8 @@ private fun drawerKey(entry: DrawerEntry): String = when (entry) {
     is DrawerEntry.Row -> entry.app.key
     is DrawerEntry.Folder -> "folder"
     is DrawerEntry.Tucked -> "tucked-${entry.app.key}"
+    is DrawerEntry.HiddenHeader -> "hidden-header"
+    is DrawerEntry.HiddenRow -> "hidden-${entry.app.key}"
 }
 
 private fun initialOf(label: String): Char {
@@ -350,6 +466,42 @@ private fun SectionHeader(letter: Char, count: Int) {
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = count.toString(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun HiddenHeader(count: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 6.dp, end = 6.dp, top = 22.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.secondaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Lock,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.size(14.dp),
+            )
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = stringResource(R.string.hidden_apps_title),
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = stringResource(R.string.apps_count, count),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -462,7 +614,7 @@ private fun FastScroller(
     Column(
         modifier = modifier
             .fillMaxHeight()
-            .width(30.dp)
+            .width(44.dp)
             .padding(vertical = 12.dp)
             .pointerInput(letters) {
                 detectTapGestures { offset ->
@@ -472,7 +624,9 @@ private fun FastScroller(
             .pointerInput(letters) {
                 detectVerticalDragGestures(
                     onDragStart = { offset ->
-                        onScrub(letterAt(offset.y, size.height, letters))
+                        val letter = letterAt(offset.y, size.height, letters)
+                        onJump(letter)
+                        onScrub(letter)
                     },
                     onDragCancel = { onScrub(null) },
                     onDragEnd = { onScrub(null) },
@@ -489,8 +643,9 @@ private fun FastScroller(
         for (letter in letters) {
             Text(
                 text = letter.toString(),
-                fontSize = 10.sp,
+                fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 1.dp),
             )
         }
     }

@@ -69,6 +69,8 @@ class MainActivity : ComponentActivity() {
     private fun render() {
         setContent {
             val themeConfig by themeViewModel.config.collectAsState()
+            val focusState by focusViewModel.uiState.collectAsState()
+            val focusMode = focusState.active != null
             val systemDark = isSystemInDarkTheme()
             val dark = isDarkTheme(themeConfig, systemDark)
             val view = LocalView.current
@@ -82,7 +84,7 @@ class MainActivity : ComponentActivity() {
                 }
                 onDispose { }
             }
-            FocusLauncherTheme(config = themeConfig) {
+            FocusLauncherTheme(config = themeConfig, focusMode = focusMode) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -93,7 +95,6 @@ class MainActivity : ComponentActivity() {
                     val appsState by appsViewModel.uiState.collectAsState()
                     val homeState by homeViewModel.uiState.collectAsState()
                     val manageState by manageViewModel.uiState.collectAsState()
-                    val focusState by focusViewModel.uiState.collectAsState()
                     val focusSettingsState by focusSettingsViewModel.uiState.collectAsState()
                     val todosState by todosViewModel.uiState.collectAsState()
                     val notesState by notesViewModel.uiState.collectAsState()
@@ -227,10 +228,17 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openUsageSettings() {
+        val appUri = android.net.Uri.fromParts("package", packageName, null)
         try {
-            startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
+            startActivity(
+                Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS, appUri),
+            )
         } catch (_: Exception) {
-            Toast.makeText(this, R.string.launch_failed, Toast.LENGTH_SHORT).show()
+            try {
+                startActivity(Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS))
+            } catch (_: Exception) {
+                Toast.makeText(this, R.string.launch_failed, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

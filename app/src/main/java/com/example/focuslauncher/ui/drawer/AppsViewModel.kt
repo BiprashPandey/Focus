@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.focuslauncher.data.appconfig.AppConfigRepository
 import com.example.focuslauncher.data.appconfig.ProtectedApps
 import com.example.focuslauncher.data.apps.AppsRepository
+import com.example.focuslauncher.data.apps.MusicApps
 import com.example.focuslauncher.data.focus.FocusManager
 import com.example.focuslauncher.data.focus.FocusProfile
 import com.example.focuslauncher.domain.focus.FocusFilter
@@ -31,6 +32,7 @@ class AppsViewModel @Inject constructor(
     private val repository: AppsRepository,
     private val appConfigRepository: AppConfigRepository,
     private val protectedApps: ProtectedApps,
+    private val musicApps: MusicApps,
     private val focusManager: FocusManager,
     private val usageRepository: com.example.focuslauncher.data.usage.UsageRepository,
 ) : ViewModel() {
@@ -39,12 +41,14 @@ class AppsViewModel @Inject constructor(
     val query: StateFlow<String> = _query.asStateFlow()
 
     private val protectedPackages = MutableStateFlow(emptySet<String>())
+    private val musicPackages = MutableStateFlow(emptySet<String>())
     private val usageMinutes = MutableStateFlow(emptyMap<String, Int>())
     private val hasUsagePermission = MutableStateFlow(false)
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
             protectedPackages.value = protectedApps.resolve()
+            musicPackages.value = musicApps.packages()
             refreshUsage()
         }
     }
@@ -66,6 +70,7 @@ class AppsViewModel @Inject constructor(
             repository.apps,
             appConfigRepository.configs,
             protectedPackages,
+            musicPackages,
             usageMinutes,
             hasUsagePermission,
             focusManager.state,
@@ -78,14 +83,16 @@ class AppsViewModel @Inject constructor(
             @Suppress("UNCHECKED_CAST")
             val protected = flows[2] as Set<String>
             @Suppress("UNCHECKED_CAST")
-            val usage = flows[3] as Map<String, Int>
-            val hasPermission = flows[4] as Boolean
-            val focusState = flows[5] as FocusState
+            val music = flows[3] as Set<String>
             @Suppress("UNCHECKED_CAST")
-            val profiles = flows[6] as List<FocusProfile>
-            val query = flows[7] as String
-            // During focus only allowed + protected apps survive; the rest are
-            // blocked (launching routes to the pause screen).
+            val usage = flows[4] as Map<String, Int>
+            val hasPermission = flows[5] as Boolean
+            val focusState = flows[6] as FocusState
+            @Suppress("UNCHECKED_CAST")
+            val profiles = flows[7] as List<FocusProfile>
+            val query = flows[8] as String
+            // During focus only allowed + protected + music apps survive; the
+            // rest are blocked (launching routes to the pause screen).
             val active = focusState as? FocusState.Active
             val allowed = active?.let { a ->
                 profiles.firstOrNull { it.id == a.profileId }
@@ -93,12 +100,12 @@ class AppsViewModel @Inject constructor(
             }
             val inFocus = active != null
             val candidates = if (allowed != null) {
-                FocusFilter.visible(apps, allowed, protected)
+                FocusFilter.visible(apps, allowed, protected, music)
             } else {
                 apps
             }
             val blocked = if (allowed != null) {
-                FocusFilter.blockedPackages(apps, allowed, protected)
+                FocusFilter.blockedPackages(apps, allowed, protected, music)
             } else {
                 emptySet()
             }
@@ -118,11 +125,12 @@ class AppsViewModel @Inject constructor(
             }
             val grouped = AppVisibility.group(candidates, levels, protected)
             val main = AppListRules.filter(grouped.visible + grouped.gated, query)
-            val hiddenMatch = AppListRules.filterHiddenFullNameOnly(grouped.hidden, query)
+            val hidden = AppListRules.filter(grouped.hidden, query)
             val tucked = AppListRules.filter(grouped.tucked, query)
             AppsUiState(
-                apps = main + hiddenMatch,
+                apps = main,
                 tucked = tucked,
+                hidden = hidden,
                 gatedPackages = grouped.gated.map { it.packageName }.toSet(),
                 blockedPackages = blocked,
                 inFocus = inFocus,

@@ -19,15 +19,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.example.focuslauncher.R
 import com.example.focuslauncher.ui.components.AuroraBackdrop
 import com.example.focuslauncher.ui.components.GlassCard
@@ -50,6 +55,14 @@ fun UsagePermissionScreen(
     val colors = accent.colors()
     val currentRefresh by rememberUpdatedState(onRefresh)
     LaunchedEffect(Unit) { currentRefresh() }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) currentRefresh()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         AuroraBackdrop(intensity = 0.8f)
@@ -123,7 +136,14 @@ fun UsagePermissionScreen(
                             icon = Icons.Rounded.Settings,
                             modifier = Modifier.fillMaxWidth(),
                         )
-                        Spacer(modifier = Modifier.size(10.dp))
+                        Spacer(modifier = Modifier.size(6.dp))
+                        TextButton(
+                            onClick = onRefresh,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(stringResource(R.string.usage_recheck))
+                        }
+                        Spacer(modifier = Modifier.size(2.dp))
                         OutlinedButton(
                             onClick = onClose,
                             modifier = Modifier.fillMaxWidth(),

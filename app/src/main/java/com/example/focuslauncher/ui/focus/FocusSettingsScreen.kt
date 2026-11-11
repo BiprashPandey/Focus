@@ -339,7 +339,7 @@ private fun AllowedRow(
         ) {
             Checkbox(
                 checked = row.allowed,
-                enabled = !row.isProtected,
+                enabled = !row.isProtected && !row.isMusic,
                 onCheckedChange = { onToggle(row.app, it) },
                 colors = CheckboxDefaults.colors(
                     checkedColor = colors.bright,
@@ -357,6 +357,11 @@ private fun AllowedRow(
                 StatPill(
                     text = stringResource(R.string.essential_app_short),
                     accent = Accent.MOTIVATION,
+                )
+            } else if (row.isMusic) {
+                StatPill(
+                    text = stringResource(R.string.focus_music_short),
+                    accent = Accent.NOTES,
                 )
             }
         }

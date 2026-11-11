@@ -44,10 +44,17 @@ fun isDarkTheme(config: ThemeConfig, systemDark: Boolean): Boolean = when (confi
 /** Lets aurora surfaces and accents react to the app's forced mode, not the OS. */
 val LocalAuroraIsDark = staticCompositionLocalOf { false }
 
+/** True while a focus session runs; chrome and icons drop to greyscale. */
+val LocalFocusMode = staticCompositionLocalOf { false }
+
+/** Neutral seed used while focus mode is active. */
+private const val FOCUS_GREY_SEED = 0xFF808080.toInt()
+
 @Composable
 fun FocusLauncherTheme(
     config: ThemeConfig = ThemeConfig(),
     systemDark: Boolean = isSystemInDarkTheme(),
+    focusMode: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val dark = isDarkTheme(config, systemDark)
@@ -57,8 +64,10 @@ fun FocusLauncherTheme(
     // (third-party apps cannot read the wallpaper bitmap directly).
     val useDynamic = supportsDynamic &&
         (config.colorSource == ColorSources.SYSTEM || config.colorSource == ColorSources.WALLPAPER)
-    val colorScheme: ColorScheme = remember(config, dark, context) {
+    val colorScheme: ColorScheme = remember(config, dark, context, focusMode) {
         when {
+            focusMode && config.mode == ThemeModes.AMOLED -> SeedScheme.amoled(FOCUS_GREY_SEED)
+            focusMode -> SeedScheme.scheme(FOCUS_GREY_SEED, dark)
             config.mode == ThemeModes.AMOLED -> SeedScheme.amoled(effectiveSeed(config).toInt())
             useDynamic -> {
                 if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
@@ -82,7 +91,10 @@ fun FocusLauncherTheme(
         )
     }
 
-    CompositionLocalProvider(LocalAuroraIsDark provides dark) {
+    CompositionLocalProvider(
+        LocalAuroraIsDark provides dark,
+        LocalFocusMode provides focusMode,
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = Typography,

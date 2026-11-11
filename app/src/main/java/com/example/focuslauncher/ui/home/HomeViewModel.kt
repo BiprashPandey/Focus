@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.focuslauncher.data.appconfig.ProtectedApps
 import com.example.focuslauncher.data.apps.AppsRepository
+import com.example.focuslauncher.data.apps.MusicApps
 import com.example.focuslauncher.data.dock.DockRepository
 import com.example.focuslauncher.data.focus.FocusManager
+import com.example.focuslauncher.data.focus.FocusProfile
 import com.example.focuslauncher.domain.focus.FocusFilter
 import com.example.focuslauncher.domain.focus.FocusState
 import com.example.focuslauncher.domain.model.AppInfo
@@ -25,13 +27,16 @@ class HomeViewModel @Inject constructor(
     private val dockRepository: DockRepository,
     private val focusManager: FocusManager,
     private val protectedApps: ProtectedApps,
+    private val musicApps: MusicApps,
 ) : ViewModel() {
 
     private val protectedPackages = MutableStateFlow(emptySet<String>())
+    private val musicPackages = MutableStateFlow(emptySet<String>())
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
             protectedPackages.value = protectedApps.resolve()
+            musicPackages.value = musicApps.packages()
         }
     }
 
@@ -42,13 +47,24 @@ class HomeViewModel @Inject constructor(
             focusManager.state,
             focusManager.allProfiles,
             protectedPackages,
-        ) { apps, keys, focusState, profiles, protected ->
+            musicPackages,
+        ) { flows ->
+            val apps = flows[0] as List<AppInfo>
+            @Suppress("UNCHECKED_CAST")
+            val keys = flows[1] as List<String?>
+            val focusState = flows[2] as FocusState
+            @Suppress("UNCHECKED_CAST")
+            val profiles = flows[3] as List<FocusProfile>
+            @Suppress("UNCHECKED_CAST")
+            val protected = flows[4] as Set<String>
+            @Suppress("UNCHECKED_CAST")
+            val music = flows[5] as Set<String>
             val active = focusState as? FocusState.Active
             val visible = if (active != null) {
                 val allowed = profiles.firstOrNull { it.id == active.profileId }
                     ?.let { FocusFilter.parseAllowed(it.allowedAppsJson) }
                     ?: emptySet()
-                FocusFilter.visible(apps, allowed, protected)
+                FocusFilter.visible(apps, allowed, protected, music)
             } else {
                 apps
             }

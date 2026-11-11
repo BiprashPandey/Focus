@@ -80,5 +80,21 @@ enum class Accent(val light: AccentColors, val dark: AccentColors) {
     ),
 }
 
+private val GreyLight = AccentColors(
+    container = Color(0xFFE6E6E6),
+    content = Color(0xFF2B2B2B),
+    bright = Color(0xFF707070),
+)
+
+private val GreyDark = AccentColors(
+    container = Color(0xFF2D2D2D),
+    content = Color(0xFFE4E4E4),
+    bright = Color(0xFFA6A6A6),
+)
+
 @Composable
-fun Accent.colors(): AccentColors = if (LocalAuroraIsDark.current) dark else light
+fun Accent.colors(): AccentColors = when {
+    LocalFocusMode.current -> if (LocalAuroraIsDark.current) GreyDark else GreyLight
+    LocalAuroraIsDark.current -> dark
+    else -> light
+}

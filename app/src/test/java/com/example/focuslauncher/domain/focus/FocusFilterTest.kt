@@ -27,6 +27,27 @@ class FocusFilterTest {
     }
 
     @Test
+    fun visible_keepsAlwaysAllowedExtras() {
+        val apps = listOf(app("work"), app("game"), app("music"))
+        val out = FocusFilter.visible(
+            apps,
+            allowedPackages = setOf("work"),
+            protectedPackages = emptySet(),
+            alwaysAllowed = setOf("music"),
+        )
+        assertEquals(listOf(app("work"), app("music")), out)
+        assertEquals(
+            setOf("game"),
+            FocusFilter.blockedPackages(
+                apps,
+                allowedPackages = setOf("work"),
+                protectedPackages = emptySet(),
+                alwaysAllowed = setOf("music"),
+            ),
+        )
+    }
+
+    @Test
     fun parseAllowed_roundTrips() {
         val pkgs = setOf("com.a", "com.b")
         assertEquals(pkgs, FocusFilter.parseAllowed(FocusFilter.encodeAllowed(pkgs)))

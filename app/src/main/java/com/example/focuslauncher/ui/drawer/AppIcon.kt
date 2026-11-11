@@ -19,6 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -29,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import com.example.focuslauncher.domain.model.AppInfo
 import com.example.focuslauncher.ui.theme.Accent
+import com.example.focuslauncher.ui.theme.LocalFocusMode
 import com.example.focuslauncher.ui.theme.colors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -53,11 +56,20 @@ fun AppIcon(
         bitmap = drawable?.toImageBitmap(px)
     }
     val image = bitmap
+    val focusMode = LocalFocusMode.current
+    val colorFilter = remember(focusMode) {
+        if (focusMode) {
+            ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
+        } else {
+            null
+        }
+    }
     if (image != null) {
         Image(
             bitmap = image,
             contentDescription = app.label,
             contentScale = ContentScale.Fit,
+            colorFilter = colorFilter,
             modifier = modifier.size(size),
         )
     } else {
