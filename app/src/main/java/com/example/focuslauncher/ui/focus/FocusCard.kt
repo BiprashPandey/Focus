@@ -1,23 +1,35 @@
 package com.example.focuslauncher.ui.focus
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -29,13 +41,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.focuslauncher.R
 import com.example.focuslauncher.domain.focus.FocusDurations
 import com.example.focuslauncher.domain.focus.countdown
+import com.example.focuslauncher.domain.focus.remaining
+import com.example.focuslauncher.ui.components.GradientButton
+import com.example.focuslauncher.ui.components.HomeCard
+import com.example.focuslauncher.ui.theme.Accent
+import com.example.focuslauncher.ui.theme.TimerFontFamily
+import com.example.focuslauncher.ui.theme.colors
 
 const val FOCUS_EXIT_WAIT_SECONDS = 10
 
@@ -46,18 +70,32 @@ fun FocusCard(
     onStop: (reason: String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-        val active = state.active
+    val accent = Accent.FOCUS
+    val active = state.active
+    val profileName = active?.let { running ->
+        state.profiles.firstOrNull { it.id == running.profileId }?.name
+    }
+    HomeCard(
+        title = profileName ?: stringResource(R.string.focus_title),
+        accent = accent,
+        icon = Icons.Rounded.Timer,
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp),
+    ) {
         if (active == null) {
             IdleFocusContent(
                 state = state,
                 onStart = onStart,
             )
         } else {
-            ActiveFocusContent(
-                state = state,
-                onStop = onStop,
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                FocusRing(
+                    active = active,
+                    now = state.now,
+                    accent = accent,
+                )
+                Spacer(modifier = Modifier.size(12.dp))
+                EndFocusControl(active = active, onStop = onStop, showHint = true)
+            }
         }
     }
 }
@@ -74,80 +112,216 @@ private fun IdleFocusContent(
     var customText by remember { mutableStateOf("") }
     val customMin = customText.toIntOrNull()?.takeIf { it in 1..480 }
     val profile = state.profiles.getOrNull(selectedProfile)
+    val accent = Accent.FOCUS
+    val colors = accent.colors()
 
-    Column(modifier = Modifier.padding(16.dp)) {
-        Text(
-            text = stringResource(R.string.focus_title),
-            style = MaterialTheme.typography.titleMedium,
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            state.profiles.forEachIndexed { index, p ->
-                FilterChip(
-                    shape = CircleShape,
-                    selected = index == selectedProfile,
-                    onClick = { selectedProfile = index },
-                    label = { Text(p.name) },
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FocusDurations.presets.forEach { min ->
-                FilterChip(
-                    shape = CircleShape,
-                    selected = customMin == null && selectedDuration == min,
-                    onClick = {
-                        selectedDuration = min
-                        customText = ""
-                    },
-                    label = { Text(stringResource(R.string.focus_minutes_short, min)) },
-                )
-            }
-            OutlinedTextField(
-                value = customText,
-                onValueChange = { customText = it.filter(Char::isDigit).take(3) },
-                label = { Text(stringResource(R.string.focus_custom)) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                modifier = Modifier.width(110.dp),
+    Text(
+        text = stringResource(R.string.focus_profile_title),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(modifier = Modifier.size(6.dp))
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        state.profiles.forEachIndexed { index, p ->
+            FilterChip(
+                selected = index == selectedProfile,
+                onClick = { selectedProfile = index },
+                shape = CircleShape,
+                label = { Text(p.name, style = MaterialTheme.typography.labelMedium) },
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    selectedContainerColor = colors.container,
+                    selectedLabelColor = colors.content,
+                ),
             )
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Button(
-            onClick = { profile?.let { onStart(it.id, customMin ?: selectedDuration) } },
-            enabled = profile != null,
-            modifier = Modifier.fillMaxWidth(),
+    }
+    Spacer(modifier = Modifier.size(12.dp))
+    Text(
+        text = stringResource(R.string.focus_length_title),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Spacer(modifier = Modifier.size(6.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FocusDurations.presets.forEach { min ->
+            DurationTile(
+                minutes = min,
+                selected = customMin == null && selectedDuration == min,
+                onClick = {
+                    selectedDuration = min
+                    customText = ""
+                },
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+    Spacer(modifier = Modifier.size(8.dp))
+    CustomMinutesField(
+        value = customText,
+        onValueChange = { customText = it.filter(Char::isDigit).take(3) },
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Spacer(modifier = Modifier.size(12.dp))
+    GradientButton(
+        text = stringResource(R.string.focus_start),
+        onClick = { profile?.let { onStart(it.id, customMin ?: selectedDuration) } },
+        enabled = profile != null,
+        accent = accent,
+        icon = Icons.Rounded.PlayArrow,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+@Composable
+private fun DurationTile(
+    minutes: Int,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val accent = Accent.FOCUS
+    val colors = accent.colors()
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(role = Role.RadioButton, onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = if (selected) {
+            colors.container
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.55f)
+        },
+        border = BorderStroke(
+            1.dp,
+            if (selected) {
+                colors.bright.copy(alpha = 0.55f)
+            } else {
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)
+            },
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(stringResource(R.string.focus_start))
+            Text(
+                text = minutes.toString(),
+                style = MaterialTheme.typography.headlineSmall,
+                color = if (selected) colors.content else MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.minutes_suffix),
+                style = MaterialTheme.typography.labelSmall,
+                color = if (selected) {
+                    colors.content.copy(alpha = 0.72f)
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            )
         }
     }
 }
 
 @Composable
-private fun ActiveFocusContent(
-    state: FocusUiState,
-    onStop: (String?) -> Unit,
+private fun CustomMinutesField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val active = state.active ?: return
-    val profileName = state.profiles.firstOrNull { it.id == active.profileId }?.name
-        ?: stringResource(R.string.focus_session)
-
-    Column(
-        modifier = Modifier.padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = scheme.surfaceContainerHigh.copy(alpha = 0.55f),
+        border = BorderStroke(1.dp, scheme.outlineVariant.copy(alpha = 0.30f)),
     ) {
-        Text(text = profileName, style = MaterialTheme.typography.titleMedium)
-        Text(
-            text = active.countdown(state.now),
-            style = MaterialTheme.typography.displaySmall,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        EndFocusControl(active = active, onStop = onStop, showHint = true)
+        Row(
+            modifier = Modifier.heightIn(min = 44.dp).padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = scheme.onSurface),
+                cursorBrush = SolidColor(scheme.primary),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.weight(1f),
+                decorationBox = { inner ->
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (value.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.custom_minutes),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = scheme.onSurfaceVariant,
+                            )
+                        }
+                        inner()
+                    }
+                },
+            )
+            Text(
+                text = stringResource(R.string.minutes_suffix),
+                style = MaterialTheme.typography.labelMedium,
+                color = scheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun FocusRing(
+    active: com.example.focuslauncher.domain.focus.FocusState.Active,
+    now: Long,
+    accent: Accent,
+) {
+    val colors = accent.colors()
+    val total = (active.endsAt - active.startedAt).coerceAtLeast(1L)
+    val fraction = (active.remaining(now).toFloat() / total).coerceIn(0f, 1f)
+    Box(
+        modifier = Modifier.size(168.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(modifier = Modifier.size(168.dp)) {
+            val stroke = 10.dp.toPx()
+            drawCircle(
+                color = colors.container.copy(alpha = 0.85f),
+                style = Stroke(width = stroke, cap = StrokeCap.Round),
+            )
+            drawArc(
+                brush = Brush.sweepGradient(
+                    listOf(
+                        colors.bright,
+                        colors.bright.copy(alpha = 0.55f),
+                        colors.bright,
+                    ),
+                ),
+                startAngle = -90f,
+                sweepAngle = 360f * fraction,
+                useCenter = false,
+                style = Stroke(width = stroke, cap = StrokeCap.Round),
+            )
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = active.countdown(now),
+                style = MaterialTheme.typography.displayMedium.copy(
+                    fontFamily = TimerFontFamily,
+                    fontWeight = FontWeight.Light,
+                ),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = stringResource(R.string.focus_in_progress),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.content,
+            )
+        }
     }
 }
 
@@ -175,6 +349,7 @@ fun EndFocusControl(
             }
         }
     }
+    val colors = Accent.FOCUS.colors()
 
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         if (!confirming) {
@@ -184,10 +359,12 @@ fun EndFocusControl(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.size(8.dp))
             }
             OutlinedButton(
                 onClick = {},
+                shape = CircleShape,
+                border = BorderStroke(1.dp, colors.bright.copy(alpha = 0.5f)),
                 modifier = Modifier
                     .fillMaxWidth()
                     .combinedClickable(
@@ -203,9 +380,10 @@ fun EndFocusControl(
                 onValueChange = { reason = it },
                 label = { Text(stringResource(R.string.focus_exit_reason)) },
                 singleLine = true,
+                shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth(),
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.size(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = { onStop(reason.ifBlank { null }) },

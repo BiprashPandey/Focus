@@ -6,10 +6,13 @@ default. Local-first and private.
 
 ## Features
 
-- **App drawer** — alphabetical list with fast scroller, fuzzy
-  accent-insensitive search, tap to launch, long-press menu.
-- **Home + dock** — 4 customizable dock slots persisted in DataStore,
-  swipe-up drawer.
+- **App drawer** — 4-column grid with alphabetical section headers,
+  a drag-to-scrub letter rail, fuzzy accent-insensitive search, tap to
+  launch, and a glass bottom sheet for visibility and app info.
+- **Home + dock** — aurora-glass dashboard with a live clock, greeting,
+  five colorful quick actions, measured right-flowing card pages, an
+  All-apps pill, swipe-up drawer and 4 customizable dock slots persisted
+  in DataStore.
 - **Hiding & gating (per app)** — `Visible`, `Tucked` (a "More" folder),
   `Hidden` (search the full name to find), `Pause-gated` (10-second
   breathing screen before opening). Phone, SMS, Settings, Clock and the
@@ -24,10 +27,13 @@ default. Local-first and private.
 - **Productive home** — to-dos (quick add, swipe-to-complete), notes
   (quick capture, pinning), calendar card (next 3 events, opt-in),
   daily intention + tone-matched quote (3/day cap, quiet hours),
-  reorderable/hideable cards with Minimal and Dashboard layouts.
+  reorderable/hideable cards that overflow onto right-hand pages, with
+  Minimal and Dashboard layouts.
 - **Theme system** — seed-color palettes (8 presets + custom HEX),
   System/Light/Dark/AMOLED modes, wallpaper/system/custom sources,
-  corner styles, icon size. Design tokens in `themeGuide.md`.
+  corner styles, icon size. Frosted-glass surfaces, per-module accent
+  colors, edge-to-edge system bars and a live theme preview. Design
+  tokens in `guidelines.md`.
 
 ## Stack
 

@@ -1,21 +1,23 @@
 package com.example.focuslauncher.ui.todos
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Card
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.TaskAlt
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -29,9 +31,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.example.focuslauncher.R
 import com.example.focuslauncher.data.todos.Todo
+import com.example.focuslauncher.ui.components.HomeCard
+import com.example.focuslauncher.ui.components.QuickInput
+import com.example.focuslauncher.ui.components.StatPill
+import com.example.focuslauncher.ui.theme.Accent
+import com.example.focuslauncher.ui.theme.colors
 
 @Composable
 fun TodosCard(
@@ -42,44 +51,102 @@ fun TodosCard(
     modifier: Modifier = Modifier,
 ) {
     var draft by remember { mutableStateOf("") }
-    Card(modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = stringResource(R.string.todos_title),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = draft,
-                    onValueChange = { draft = it },
-                    label = { Text(stringResource(R.string.todos_quick_add)) },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
+    val accent = Accent.TODOS
+    val colors = accent.colors()
+    val done = state.all.count { it.doneAt != null }
+    HomeCard(
+        title = stringResource(R.string.todos_title),
+        accent = accent,
+        icon = Icons.Rounded.TaskAlt,
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        trailing = {
+            if (state.all.isNotEmpty()) {
+                StatPill(
+                    text = stringResource(R.string.done_count, done, state.all.size),
+                    accent = accent,
                 )
-                IconButton(
-                    onClick = {
-                        onAdd(draft)
-                        draft = ""
-                    },
-                    enabled = draft.isNotBlank(),
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.todos_add))
-                }
             }
-            if (state.top.isEmpty()) {
+        },
+    ) {
+        QuickInput(
+            value = draft,
+            onValueChange = { draft = it },
+            placeholder = stringResource(R.string.todos_quick_add),
+            onSubmit = {
+                onAdd(draft)
+                draft = ""
+            },
+            accent = accent,
+        )
+        if (state.top.isEmpty()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 14.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.CheckCircle,
+                    contentDescription = null,
+                    tint = colors.bright,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = stringResource(R.string.todos_empty),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            state.top.forEach { todo ->
-                SwipeableTodoRow(todo = todo, onToggle = onToggle)
+        } else {
+            Column(modifier = Modifier.padding(top = 6.dp)) {
+                state.top.forEach { todo ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(role = Role.Checkbox) { onToggle(todo) }
+                            .padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = todo.doneAt != null,
+                            onCheckedChange = { onToggle(todo) },
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = colors.bright,
+                                checkmarkColor = colors.container,
+                                uncheckedColor = MaterialTheme.colorScheme.outline,
+                            ),
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = todo.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            textDecoration = if (todo.doneAt != null) {
+                                TextDecoration.LineThrough
+                            } else {
+                                null
+                            },
+                            color = if (todo.doneAt != null) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
             }
-            if (state.all.size > 3) {
+        }
+        if (state.all.size > 3) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
                 TextButton(onClick = onOpenList) {
                     Text(stringResource(R.string.todos_see_all, state.all.size))
+                    Icon(
+                        imageVector = Icons.Rounded.ChevronRight,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
                 }
             }
         }
@@ -106,7 +173,10 @@ fun SwipeableTodoRow(
         backgroundContent = {},
         modifier = modifier,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             Checkbox(
                 checked = todo.doneAt != null,
                 onCheckedChange = { onToggle(todo) },
@@ -115,7 +185,17 @@ fun SwipeableTodoRow(
             Text(
                 text = todo.title,
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f),
+                textDecoration = if (todo.doneAt != null) {
+                    TextDecoration.LineThrough
+                } else {
+                    null
+                },
+                color = if (todo.doneAt != null) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                modifier = Modifier.weight(1f).padding(vertical = 12.dp),
             )
         }
     }

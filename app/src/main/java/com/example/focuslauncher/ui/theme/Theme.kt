@@ -11,7 +11,9 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.focuslauncher.data.theme.ColorSources
@@ -32,17 +34,23 @@ private val FallbackLight = lightColorScheme(
     tertiary = Pink40,
 )
 
+/** True when the active configuration renders a dark palette. */
+fun isDarkTheme(config: ThemeConfig, systemDark: Boolean): Boolean = when (config.mode) {
+    ThemeModes.LIGHT -> false
+    ThemeModes.DARK, ThemeModes.AMOLED -> true
+    else -> systemDark
+}
+
+/** Lets aurora surfaces and accents react to the app's forced mode, not the OS. */
+val LocalAuroraIsDark = staticCompositionLocalOf { false }
+
 @Composable
 fun FocusLauncherTheme(
     config: ThemeConfig = ThemeConfig(),
     systemDark: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    val dark = when (config.mode) {
-        ThemeModes.LIGHT -> false
-        ThemeModes.DARK, ThemeModes.AMOLED -> true
-        else -> systemDark
-    }
+    val dark = isDarkTheme(config, systemDark)
     val context = LocalContext.current
     val supportsDynamic = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     // Wallpaper colors come from the OS dynamic palette on Android 12+
@@ -74,12 +82,14 @@ fun FocusLauncherTheme(
         )
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        shapes = shapes,
-        content = content,
-    )
+    CompositionLocalProvider(LocalAuroraIsDark provides dark) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            shapes = shapes,
+            content = content,
+        )
+    }
 }
 
 /** Wallpaper source uses the last extracted seed, falling back to the custom seed. */

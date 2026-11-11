@@ -1,5 +1,7 @@
 package com.example.focuslauncher.ui.focus
 
+import android.app.NotificationManager
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.focuslauncher.data.appconfig.ProtectedApps
@@ -11,6 +13,7 @@ import com.example.focuslauncher.domain.focus.FocusSchedule
 import com.example.focuslauncher.domain.model.AppInfo
 import com.example.focuslauncher.domain.rules.AppListRules
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -34,6 +37,7 @@ data class FocusSettingsUiState(
     val query: String = "",
     val schedule: FocusSchedule? = null,
     val dndEnabled: Boolean = false,
+    val dndAccessGranted: Boolean = false,
     val isLoading: Boolean = true,
 )
 
@@ -42,6 +46,7 @@ class FocusSettingsViewModel @Inject constructor(
     private val appsRepository: AppsRepository,
     private val manager: FocusManager,
     private val protectedApps: ProtectedApps,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
@@ -49,6 +54,7 @@ class FocusSettingsViewModel @Inject constructor(
 
     private val selectedId = MutableStateFlow<Long?>(null)
     private val protectedPackages = MutableStateFlow(emptySet<String>())
+    private val dndAccess = MutableStateFlow(hasDndAccess())
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
@@ -83,6 +89,8 @@ class FocusSettingsViewModel @Inject constructor(
                 dndEnabled = selected?.dndEnabled == true,
                 isLoading = false,
             )
+        }.combine(dndAccess) { state, granted ->
+            state.copy(dndAccessGranted = granted)
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
@@ -114,6 +122,14 @@ class FocusSettingsViewModel @Inject constructor(
         val id = uiState.value.selectedId ?: return
         viewModelScope.launch { manager.setDnd(id, enabled) }
     }
+
+    fun refreshDndAccess() {
+        dndAccess.value = hasDndAccess()
+    }
+
+    private fun hasDndAccess(): Boolean =
+        context.getSystemService(NotificationManager::class.java)
+            ?.isNotificationPolicyAccessGranted == true
 
     fun onSaveSchedule(schedule: FocusSchedule) {
         val id = uiState.value.selectedId ?: return

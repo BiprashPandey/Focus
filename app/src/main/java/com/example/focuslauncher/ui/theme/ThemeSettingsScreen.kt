@@ -1,5 +1,6 @@
 package com.example.focuslauncher.ui.theme
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,17 +20,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -52,7 +47,12 @@ import com.example.focuslauncher.data.theme.ThemeConfig
 import com.example.focuslauncher.data.theme.ThemeModes
 import com.example.focuslauncher.data.theme.ThemePreset
 import com.example.focuslauncher.data.theme.ThemePresets
+import com.example.focuslauncher.ui.components.AuroraBackdrop
+import com.example.focuslauncher.ui.components.GlassCard
+import com.example.focuslauncher.ui.components.GradientButton
+import com.example.focuslauncher.ui.components.ScreenHeader
 import com.example.focuslauncher.ui.components.SettingsGroup
+import com.example.focuslauncher.ui.theme.Accent
 import kotlin.math.roundToInt
 
 @Composable
@@ -68,26 +68,16 @@ fun ThemeSettingsScreen(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(modifier = modifier.fillMaxSize()) {
+    BackHandler { onClose() }
+    Box(modifier = modifier.fillMaxSize()) {
+        AuroraBackdrop(intensity = 0.8f)
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             item(key = "header") {
-                Row(
-                    modifier = Modifier.fillMaxWidth()
-                        .padding(start = 16.dp, end = 8.dp, top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(R.string.theme_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.weight(1f),
-                    )
-                    IconButton(onClick = onClose) {
-                        Icon(
-                            Icons.Filled.Close,
-                            contentDescription = stringResource(R.string.manage_apps_close),
-                        )
-                    }
-                }
+                ScreenHeader(
+                    title = stringResource(R.string.theme_title),
+                    subtitle = stringResource(R.string.theme_subtitle),
+                    onClose = onClose,
+                )
             }
             item(key = "preview") {
                 ThemePreviewCard()
@@ -272,40 +262,42 @@ private fun ChipFlow(
 /** Live miniature preview reflecting the active scheme and shapes. */
 @Composable
 private fun ThemePreviewCard() {
-    Card(
-        shape = MaterialTheme.shapes.large,
+    val accent = Accent.MOTIVATION
+    val previewColors = accent.colors()
+    GlassCard(
+        accent = accent,
         modifier = Modifier.fillMaxWidth().padding(16.dp),
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = stringResource(R.string.theme_preview),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
+        Text(
+            text = stringResource(R.string.theme_preview),
+            style = MaterialTheme.typography.titleSmall,
+            color = previewColors.content,
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(MaterialTheme.shapes.small)
+                    .background(previewColors.bright.copy(alpha = 0.35f)),
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.titleMedium,
                 )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.app_name),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(
-                        text = stringResource(R.string.swipe_up_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Button(onClick = {}) {
-                    Text(stringResource(R.string.focus_start))
-                }
+                Text(
+                    text = stringResource(R.string.swipe_up_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
+            GradientButton(
+                text = stringResource(R.string.focus_start),
+                onClick = {},
+                accent = accent,
+            )
         }
     }
 }
